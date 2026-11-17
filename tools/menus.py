@@ -24,6 +24,7 @@ def row(s, cells=18):
     return text(("   " + s).ljust(cells)[:cells])
 
 
+FADE = 0                # D-32: bank 3 fade-out entry (X = mode), set by build.py
 UNLOCK = {}             # D-29: tools/unlock.py labels, set by build.py
 MAGIC = "$A5"          # $0102 = $A5, $0103 = $5A: "reopen the menu", $0104 level, $0105 cursor
 MAGIC2 = "$5A"
@@ -595,8 +596,7 @@ dret:    TAX
          AND #$20
          BEQ dr1
          LDX #$30
-dr1:     TXA
-         JMP $E073
+dr1:     JMP FADE              ; D-32: bank 3 fadeq (build.py ENDCHK_SRC), X = target mode
 """
 
 # (file offset, expected original bytes, kind)
@@ -747,7 +747,7 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     if len(lcode) > 12 or orig[LIVES0_FILE:LIVES0_FILE + 12] != bytes.fromhex("85E8200 8E42078E3A5E8F0E7".replace(" ", "")):
         raise SystemExit("menus: lives0 area")
     p[LIVES0_FILE:LIVES0_FILE + len(lcode)] = lcode
-    dcode0, _ = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC).replace("TBANKS", "$%02X" % TITLE_BANKS),
+    dcode0, _ = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC).replace("TBANKS", "$%02X" % TITLE_BANKS).replace("FADE", "$%04X" % FADE),
                          fixed_free_start)
     far = fixed_free_start + len(dcode0)        # difficulty.FIXED_SRC starts with far
     tcode, tl = assemble(TITLE_SRC.replace("LIVES0", "$%04X" % ll["lives0"]).replace("FAR", "$%04X" % far),
@@ -760,7 +760,7 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     scode, sl = assemble(ss, SEL_ORG)
     if SEL_ORG + len(scode) > bank10_free_end:
         raise SystemExit("menus: bank 10 code too large")
-    dcode, dl = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC).replace("TBANKS", "$%02X" % TITLE_BANKS),
+    dcode, dl = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC).replace("TBANKS", "$%02X" % TITLE_BANKS).replace("FADE", "$%04X" % FADE),
                          fixed_free_start)
     if fixed_free_start + len(dcode) > fixed_free_end:
         raise SystemExit("menus: fixed-bank helper does not fit")

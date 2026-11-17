@@ -83,21 +83,25 @@ endchk:  JSR $CCF8
          LDA $F9
          AND #$90              ; A or START?
          BEQ e9
-         LDX #$30              ; theater (DEMO 11): back to DEMO SELECT
+         LDX #$0F              ; story: A/START once the end card is up -> opening
          LDA $F6
          AND #$20
-         BEQ eg
+         BEQ ecard
+         LDX #$30              ; theater (DEMO 11): START at any time, A on the card -> DEMO SELECT
          LDA $F9
          AND #$10
-         BNE fade              ; theater: START at any time,
-         BEQ ecard             ;          A once the end card is up
-eg:      LDX #$0F              ; story: A/START once the end card is up -> opening
+         BNE fade
 ecard:   LDA $03D6
          CMP #$4D
          BNE e9
-         LDA $03D7
-         AND #$40
-         BEQ e9
+         BIT $03D7             ; bit 6 = finished
+         BVC e9
+         BVS fade
+fadeq:   LDA $0103             ; D-32 (from dret): no fade when passing through the intro on the
+         CMP #$5A              ;       way back from a select screen ($0103 = $5A only then)
+         BNE fade
+         TXA
+         JMP $E073
 fade:    TXA                   ; target mode
          PHA
          LDY #$04              ; fade out: 4 steps of -$10 on every palette entry
@@ -110,20 +114,13 @@ fo2:     LDA $0120,X
 fo3:     STA $0120,X
          DEX
          BPL fo2
-         JSR $E40F             ; BG palette next NMI, sprite palette the one after
-         JSR $E416
-         TYA
-         PHA
+         LDA $DD               ; BG palette next NMI, sprite palette the one after ($E40F/$E416)
+         ORA #$30
+         STA $DD
          LDX #$06
-fw:      TXA
-         PHA
-         JSR $E378
-         PLA
-         TAX
+fw:      JSR $E378             ; one frame (keeps A/X/Y)
          DEX
          BNE fw
-         PLA
-         TAY
          DEY
          BNE fo1
          PLA
@@ -702,6 +699,8 @@ def main():
         raise SystemExit("unlock: bank 11 area not free")
     p[unlock.FILE:unlock.FILE + len(ucode)] = ucode
     menus.UNLOCK = ul
+    _, el0 = assemble(ENDCHK_SRC, 0xBFA2)
+    menus.FADE = el0["fadeq"]
     difficulty.UNLOCK = ul
     menu_report = menus.apply(p, orig_p, FIXED_FREE[0] + len(mcode), FIXED_FREE[1], 0xBFFF, 0x9E00)
     diff_report = difficulty.apply(p, orig_p, menu_report["fixed_next"], FIXED_FREE[1])
@@ -720,6 +719,14 @@ def main():
     if 0xBFA2 + len(ecode) > 0xC000:
         raise SystemExit("ending: endchk too large")
     p[0x7FA2:0x7FA2 + len(ecode)] = ecode
+    # D-32: every cut-scene ends with a fade-out. DEMO 3-10 (bank 3) end with
+    # "LDA $F6 / AND #$20 / BEQ +2 / LDX #$30 / TXA / JMP $E073" -> TXA/JMP becomes JMP fade
+    # (fade does TXA itself); DEMO 1/2 go through dret (menus.py).
+    for off in (0x658C, 0x682B, 0x6B1E, 0x6C95, 0x7057, 0x71FE, 0x7359, 0x76A3):
+        if orig_p[off - 7:off + 4] != bytes.fromhex("A5F62920F002A2308A4C73E0")[1:] and \
+                orig_p[off - 8:off + 4] != bytes.fromhex("A5F62920F002A2308A4C73E0"):
+            raise SystemExit("cut-scene end at file $%05X: unexpected bytes" % off)
+        p[off:off + 3] = bytes([0x4C, el["fade"] & 0xFF, el["fade"] >> 8])
     # D-20: ending start (bank 3 $B86F) queued the princess palette before the picture CHR bank
     # ($00 = $74) reached the shadow registers, so one frame showed the font tiles. Set the bank and
     # copy it ($CD04) first, then start the palette fade. Code in bank 3's $FF tail at $BF96.
