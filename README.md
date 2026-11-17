@@ -15,7 +15,7 @@
 
 ## 패치
 
-시험용 패치는 [dist/](dist/)에 있습니다. 일본판 원본 롬에 IPS로 적용하세요.
+패치는 [dist/](dist/)에 버전별로 올립니다(`LordOfKing_KR_v<버전>.ips`). 일본판 원본 롬에 IPS로 적용하세요. 변경 내용은 [CHANGELOG.md](CHANGELOG.md).
 
 ## 도구
 
@@ -24,7 +24,8 @@
 python3 tools/extract_script.py 롬경로.nes
 # 빌드 (build/lok_ko_dev.nes) 와 IPS 생성
 LOK_FONT=Galmuri11-Condensed.ttf python3 tools/build.py 롬경로.nes
-python3 tools/make_ips.py 롬경로.nes build/lok_ko_dev.nes dist/LordOfKing_KR_dev.ips
+# 한 번에: 빌드 + IPS + 검사 + dist 갱신 (버전은 VERSION 파일)
+LOK_FONT=Galmuri11-Condensed.ttf tools/release.sh 롬경로.nes
 # 패치에 원문 텍스트·가나 타일이 없는지 검사 (실패 시 종료 코드 1)
 LOK_FONT=Galmuri11-Condensed.ttf python3 tools/check_patch.py 롬경로.nes dist/LordOfKing_KR_dev.ips
 ```
