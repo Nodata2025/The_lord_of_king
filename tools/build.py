@@ -756,7 +756,7 @@ def main():
     if 0xA200 + len(scode) > 0xA2E0 or orig_p[0x162E0:0x162E0 + len(icode)] != b"\xff" * len(icode):
         raise SystemExit("inst: bank 11 $A2E0 not free")
     p[0x162E0:0x162E0 + len(icode)] = icode
-    ecode, el = assemble(ENDCHK_SRC.replace("FAR", "$%04X" % diff_report["far"])
+    ecode, el = assemble(ENDCHK_SRC.replace("FAR", "$%04X" % diff_report["farq"])
                          .replace("POSTSTR", "$%02X" % post.STRING), 0xBFA2)
     # $BBEE (step 18): staff roll also without $F6 bit 5 (D-28), S78 after it (D-37)
     s18, _ = assemble(STEP18_SRC.replace("POSTSTR", "$%02X" % post.STRING)
@@ -792,8 +792,26 @@ def main():
             nxt = orig_p[off + 9]
             if nxt not in (0xA9, 0xEE, 0x18, 0xA5, 0xAD):
                 raise SystemExit("picfix: site $%05X followed by %02X" % (off, nxt))
+            if orig_p[off + 9:off + 11] == b"\xa9\x0a" and orig_p[off + 11:off + 13] == b"\x85\x01":
+                # QA 2026-11-18: Cutie's picture also sets $01 ($0A) right after; set it before
+                # picfix too, or its lower half showed font tiles for a frame (DEMO 2, 9 sites)
+                if orig_p[off + 13] not in (0xA9, 0xEE, 0x18, 0xA5, 0xAD):
+                    raise SystemExit("picfix: site $%05X followed by %02X" % (off, orig_p[off + 13]))
+                p[off:off + 13] = bytes([0xA9, o[6], 0x85, 0x00, 0xA9, 0x0A, 0x85, 0x01,
+                                         0xA9, o[1], 0x20, pf & 0xFF, pf >> 8])
+                nfix += 1
+                continue
             p[off:off + 9] = bytes([0xA9, o[6], 0x85, 0x00, 0xA9, o[1], 0x20, pf & 0xFF, pf >> 8])
             nfix += 1
+    # QA 2026-11-18: two sites already set the bank first ("LDA #bank / STA $00 / LDA #pal /
+    # JSR $80BD") but the picture loader ($819E) waits a frame before the loop's $CD04, so the
+    # new palette met the old bank for a frame (DEMO 5 princess; also in the original game).
+    for off in (0x623E, 0x6BA1):
+        o = orig_p[off:off + 9]
+        if o[0] != 0xA9 or o[2:5] != b"\x85\x00\xa9" or o[6:9] != b"\x20\xbd\x80":
+            raise SystemExit("picfix: bank-first site $%05X: unexpected bytes" % off)
+        p[off + 7:off + 9] = bytes([pf & 0xFF, pf >> 8])
+        nfix += 1
     # D-34: the text-window IRQ (scanline ~163, inside row 20) switched the $0800/$0C00 banks
     # low nibble first: for a moment the bank was (new low | old high) = a picture bank whose
     # tile $FF is not blank, and the right end of that scanline showed a coloured streak.

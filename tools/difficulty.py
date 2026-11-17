@@ -218,6 +218,14 @@ far:     STA $011D
 f0:      JSR $E475
          LDA $011D
          RTS
+; QA 2026-11-18: callers that wait frames inside far (ending/cut-scene fades) first let the
+; NMI drain the PPU queue - an entry queued from bank 2/3 data (a mouth frame) would be copied
+; from bank 10/11 while far has them mapped (one frame of garbage tiles at the mouth).
+farq:    LDX $30
+         BEQ fq1
+         JSR $E378
+         JMP farq
+fq1:     JMP far
 frst:    LDY #$04
          JSR far
          JMP $CFBB
@@ -291,5 +299,5 @@ def apply(p, orig, fixed_start, fixed_end):
     for name, b in put.items():
         off = SITES[name][0]
         p[off:off + len(b)] = b
-    return {"far": far, "post_bytes": len(pcode), "bank11_bytes": len(bcode), "fixed_bytes": len(fcode), "bank14_bytes": len(kcode),
+    return {"far": far, "farq": fl["farq"], "post_bytes": len(pcode), "bank11_bytes": len(bcode), "fixed_bytes": len(fcode), "bank14_bytes": len(kcode),
             "fixed_next": fixed_start + len(fcode)}
