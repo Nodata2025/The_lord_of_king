@@ -315,17 +315,17 @@
   "S62": {
    "src_sha1": "d94ef481cbe75dd56d47fdf460daa9bb4bcc233c",
    "state": "needs_review",
-   "ko": "로슈…….{BR}당신의 노력에 감사합니다.{WAIT}{PAGE}내 힘이 아니야…….{BR} 큐티 덕분이야…….{WAIT}{PAGE}네…….{BR} 그녀에게는, 가엾은 일을{WAIT}{PAGE}{END}"
+   "ko": "로슈…….{BR}당신의 노력에 감사드립니다.{WAIT}{PAGE}내 힘이 아니야…….{BR} 큐티의 희생 덕분이지…….{WAIT}{PAGE}네…….{SPLIT}그녀에게는, 미안한 일을{BR} 겪게 만들었습니다…….{WAIT}{PAGE}{END}"
   },
   "S63": {
    "src_sha1": "55db1f4c27899e890bf3e82bf8cbabd644a7c077",
    "state": "needs_review",
-   "ko": "당신들의 힘으로 이 레무리아는,{BR} 지켜지고 사람들은 구원받았습니다.{WAIT}{PAGE}레무리아로 돌아가, 저희의{BR} 대접을 받아 주세요.{WAIT}{PAGE}{END}"
+   "ko": "당신들의 힘으로 이 레무리아는,{BR} 지켜지고 사람들은 구원받았습니다.{WAIT}{PAGE}레무리아로 돌아가, 저희의{BR} 보답을 받아 주세요.{WAIT}{PAGE}{END}"
   },
   "S64": {
    "src_sha1": "ca2381a3dfb363f81fc4378156b60d8b54959349",
    "state": "needs_review",
-   "ko": "「……………」{WAIT}{PAGE}돌려보내 주지 않겠어?{BR} 원래 세계로.{WAIT}{PAGE}여기 있는 건, 괴로워.{WAIT}{PAGE}{END}"
+   "ko": "「……………」{WAIT}{PAGE}돌려보내 주지 않겠어?{BR} 원래 세계로.{WAIT}{PAGE}이제 더 이상 여기 있는 건, 괴롭거든.{WAIT}{PAGE}{END}"
   },
   "S65": {
    "src_sha1": "b1d9b6d59f2997d353d0bd690306bb24f00d564c",
@@ -335,7 +335,7 @@
   "S66": {
    "src_sha1": "6c3351875b05903cd2da72856efe8d22d983bead",
    "state": "needs_review",
-   "ko": "로슈, 당신의 세계에서{BR} 행복하게…….{WAIT}{PAGE}{END}"
+   "ko": "로슈, 당신의 세계에서{BR} 행복하게 지내시길…….{WAIT}{PAGE}{END}"
   },
   "S67": {
    "src_sha1": "e40c0fc75e0546bac5d310a4b9fc6c78fbc57c22",
@@ -375,17 +375,17 @@
   "S74": {
    "src_sha1": "3f314ed84cb9b83d7fe9fac25b32b0782ed0bb13",
    "state": "needs_review",
-   "ko": "아아, 큐티. 그런데 어떻게,{WAIT}{PAGE}{END}"
+   "ko": "아아……! 큐티! 도대체 어떻게,{WAIT}{PAGE}{END}"
   },
   "S75": {
    "src_sha1": "ea3c55fcb0d949bd5cf357ef5b2c80c186daf57c",
    "state": "needs_review",
-   "ko": "……응.{WAIT}{PAGE}그랬구나!{WAIT}{PAGE}{END}"
+   "ko": "……설마!{WAIT}{PAGE}그런 건가!{WAIT}{PAGE}{END}"
   },
   "S76": {
    "src_sha1": "dd82e668c673fd204fbc24d96d882512370d3457",
    "state": "needs_review",
-   "ko": "로슈, 큐티!!{WAIT}{PAGE}저로부터 두 사람에게{BR} 드리는 작은 보답이에요.{WAIT}{PAGE}             끝{END}"
+   "ko": "로슈, 큐티!!{WAIT}{PAGE}제가 두 사람에게{BR} 드릴 수 있는 작은 보답이에요.{WAIT}{PAGE}             끝{END}"
   },
   "S77": {
    "src_sha1": "5e02b8a108a9982f9f0bb29045f506a6501af40b",
@@ -647,6 +647,7 @@
   "S62": [
    "톰슨 공주",
    "로슈",
+   "톰슨 공주",
    "톰슨 공주"
   ],
   "S63": [
@@ -691,7 +692,7 @@
    "로슈"
   ],
   "S75": [
-   "큐티",
+   "로슈",
    "로슈"
   ],
   "S76": [

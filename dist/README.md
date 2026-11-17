@@ -2,7 +2,7 @@
 
 | 파일 | 적용 후 롬 SHA-1 | IPS SHA-1 |
 |---|---|---|
-| `LordOfKing_KR_v0.11.9-dev.ips` | `141091f39c15cd2d6952a8bac51007bf491ebd62` | `af57cb64052113413fa5901d5f3b85caad8913b0` |
+| `LordOfKing_KR_v0.11.10-dev.ips` | `4cb23353a986436ea3e1f17d1114578340ffd811` | `80d01a2f7d10e684c338c243f988d63323ef4db4` |
 
 - 적용 대상: 일본판 iNES 롬 「The Lord of King」, SHA-1 `b1cad2d3e38ccd7780437d2c83effa254576861b` (262,160바이트)
 - 적용하면 CHR-ROM이 256KB로 늘어납니다(393,232바이트).

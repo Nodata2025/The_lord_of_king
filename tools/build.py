@@ -414,9 +414,10 @@ def main():
             raise SystemExit(f"{sid}: source hash mismatch (stale translation baseline)")
         if e.get("ko"):
             check_layout(sid, e["ko"].replace("{SPLIT}", "{WAIT}{PAGE}"))
-            ctl = lambda t: re.findall(r"\{(?:WAIT|PAGE|BR|END)\}", t)
-            # D-12: {SPLIT} (speaker change) stands where the source has {BR}
-            if ctl(e["ko"].replace("{SPLIT}", "{BR}")) != ctl(decode(bytes(src[i]))):
+            ctl = lambda t: re.findall(r"\{(?:WAIT|PAGE|END)\}", t)
+            # D-12: {SPLIT} (speaker change) adds a page inside a source page; line breaks ({BR})
+            # are free (D-21) - only the source's {WAIT}/{PAGE}/{END} sequence must be kept
+            if ctl(e["ko"].replace("{SPLIT}", "")) != ctl(decode(bytes(src[i]))):
                 raise SystemExit(f"{sid}: control token sequence differs from source")
             ko[i] = e["ko"].replace("{SPLIT}", "{WAIT}{PAGE}")
 
@@ -570,6 +571,13 @@ def main():
     import difficulty
     menu_report = menus.apply(p, orig_p, FIXED_FREE[0] + len(mcode), FIXED_FREE[1], 0xBFFF, 0x9E00)
     diff_report = difficulty.apply(p, orig_p, menu_report["fixed_next"], FIXED_FREE[1])
+    # D-20: ending start (bank 3 $B86F) queued the princess palette before the picture CHR bank
+    # ($00 = $74) reached the shadow registers, so one frame showed the font tiles. Set the bank and
+    # copy it ($CD04) first, then start the palette fade. Code in bank 3's $FF tail at $BF96.
+    if orig_p[0x786F:0x7878] != bytes.fromhex("A97820BD80A9748500") or orig_p[0x7F96:0x7FA2] != b"\xff" * 12:
+        raise SystemExit("ending palette fix: unexpected source bytes")
+    p[0x7F96:0x7FA2] = bytes.fromhex("A97485002004CDA9784CBD80")   # LDA #$74/STA $00/JSR $CD04/LDA #$78/JMP $80BD
+    p[0x786F:0x7878] = bytes.fromhex("2096BF") + b"\xea" * 6          # JSR $BF96 / NOP x6
 
     # --- hooks
     code, labels = assemble(HOOKS.replace("FIRST", "$%02X" % FIRST_SET_BANK), CODE_ORG)
