@@ -6,7 +6,8 @@ stops at $0119):
   $011D far-call A in/out  $011E difficulty 0/1/2    $011F = $011E ^ $5A (checked on the title)
 
 EASY   damage taken x0.5 (remainder carried), player attack x1.5 (rounded up),
-       PW gauge never drains, 9 lives, no horizontal knockback.
+       PW gauge never drains, 9 lives, a hit does not stop the player (no knockback,
+       no hop; only the blinking invincibility), except the hit that empties the HP.
 NORMAL original.
 HARD   damage taken x1.2 (every 5 points one extra), boss max HP x1.5 (max HP >= 40 in the
        $D57B table = the boss list at bank 0 $8DB1-$8DC0 plus multi-part pieces),
@@ -29,8 +30,8 @@ disp:    LDA dhi,Y
          PHA
          LDA $011D
          RTS
-dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1
-dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1
+dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1
+dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1
 ; ---- 0: damage taken (was $C52D: A = attack id) ----
 r_dmg:   AND #$3F
          TAY
@@ -125,6 +126,26 @@ fn:      TXA
          TAX
          BNE fl
 fr:      RTS
+; ---- 5: first frame of a hit (bank 0 $8455). EASY and still alive: no hurt motion at all,
+;      only the blinking invincibility ($76 bit4, $7D frames) and the hit sound. ----
+r_hit:   LDY $011E
+         BNE hn
+         LDA $91
+         BEQ hn
+         LDA $76
+         AND #$1F
+         ORA #$10
+         STA $76
+         LDA #$80
+         STA $7D
+         LDA #$0D
+         STA $C1
+         LDA #$01
+         STA $011D
+         RTS
+hn:      LDA #$00
+         STA $011D
+         RTS
 """
 
 FIXED_SRC = """
@@ -159,13 +180,13 @@ atkst:   LDY #$02
 """
 
 B14_SRC = """
-kbh:     LDA $011E
-         BNE kb1
-         LDX #$00              ; EASY: knockback without horizontal speed
-         JMP $8431
-kb1:     SEC
-         LDA $6D
-         JMP $84E3
+hst:     LDY #$05
+         JSR far
+         BEQ ho
+         RTS                   ; EASY: handled, back to $80FD (JMP $8115)
+ho:      LDA #$00              ; original $8455
+         STA $78
+         JMP $8459
 vh:      LDA $43
          CMP #$06
          BNE vn
@@ -183,7 +204,7 @@ SITES = {
     "atk":   (0x1D2CB, "20F1D2"),           # JSR $D2F1             -> JSR atkst
     "pw":    (0x1C5C3, "A900858D858E"),     # gauge reset on swing  -> LDY #3 / JMP far / NOP
     "frame": (0x1C75D, "20BBCF"),           # gameplay loop         -> JSR frst
-    "kb":    (0x004E0, "38A56D"),           # knockback X speed     -> JMP kbh
+    "hit":   (0x00455, "A9008578"),         # hurt start            -> JMP hst
     "vel":   (0x1E9A7, "A9048518"),         # object move           -> JMP vh / NOP
 }
 
@@ -194,7 +215,7 @@ def apply(p, orig, fixed_start, fixed_end):
             raise SystemExit(f"difficulty: unexpected bytes at {name} (file ${off:05X})")
     bcode, _ = assemble(B11_SRC, B11_ORG)
     fcode, fl = assemble(FIXED_SRC, fixed_start)
-    kcode, kl = assemble(B14_SRC, B14_ORG)
+    kcode, kl = assemble(B14_SRC, B14_ORG, {"far": fl["far"]})
     if fixed_start + len(fcode) > fixed_end:
         raise SystemExit("difficulty: fixed-bank code does not fit")
     if B14_ORG + len(kcode) > B14_END:
@@ -213,7 +234,7 @@ def apply(p, orig, fixed_start, fixed_end):
         "atk":   b"\x20" + w(fl["atkst"]),
         "pw":    b"\xa0\x03\x4c" + w(far) + b"\xea",
         "frame": b"\x20" + w(fl["frst"]),
-        "kb":    b"\x4c" + w(kl["kbh"]),
+        "hit":   b"\x4c" + w(kl["hst"]),
         "vel":   b"\x4c" + w(kl["vh"]) + b"\xea",
     }
     for name, b in put.items():
