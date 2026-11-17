@@ -79,23 +79,26 @@ st9:     RTS
 # D-28 (bank 3 $BFA2, ending main loop): replaces the fixed-bank endchk at $B82C
 ENDCHK_SRC = """
 endchk:  JSR $CCF8
+         LDA $F9
+         AND #$90              ; A or START?
+         BEQ e9
+         LDX #$30              ; theater (DEMO 11): back to DEMO SELECT
          LDA $F6
          AND #$20
          BEQ eg
-         LDA $F9               ; theater: START = back to DEMO SELECT
+         LDA $F9
          AND #$10
-         BEQ e9
-         LDA #$30
-         JMP $E073
-eg:      LDA $F9               ; story: A/START only once the end card is up
-         AND #$90
-         BEQ e9
-         LDA $03D6
+         BNE fade              ; theater: START at any time,
+         BEQ ecard             ;          A once the end card is up
+eg:      LDX #$0F              ; story: A/START once the end card is up -> opening
+ecard:   LDA $03D6
          CMP #$4D
          BNE e9
          LDA $03D7
          AND #$40
          BEQ e9
+fade:    TXA                   ; target mode
+         PHA
          LDY #$04              ; fade out: 4 steps of -$10 on every palette entry
 fo1:     LDX #$1F
 fo2:     LDA $0120,X
@@ -122,7 +125,7 @@ fw:      TXA
          TAY
          DEY
          BNE fo1
-         LDA #$0F              ; -> opening
+         PLA
          JMP $E073
 e9:      RTS
 """
