@@ -25,6 +25,8 @@ python3 tools/extract_script.py 롬경로.nes
 # 빌드 (build/lok_ko_dev.nes) 와 IPS 생성
 LOK_FONT=Galmuri11-Condensed.ttf python3 tools/build.py 롬경로.nes
 python3 tools/make_ips.py 롬경로.nes build/lok_ko_dev.nes dist/LordOfKing_KR_dev.ips
+# 패치에 원문 텍스트·가나 타일이 없는지 검사 (실패 시 종료 코드 1)
+LOK_FONT=Galmuri11-Condensed.ttf python3 tools/check_patch.py 롬경로.nes dist/LordOfKing_KR_dev.ips
 ```
 
 ## 문서
