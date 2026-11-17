@@ -112,6 +112,8 @@ PATCHES_EXPECT = {
     0x8066: bytes.fromhex("ADDF03"),     # LDA $03DF   (control dispatch)
     0x8093: bytes.fromhex("A9DDA003"),   # LDA #$DD / LDY #$03 (1x1 glyph source)
     0x80A9: bytes.fromhex("ADD703"),     # LDA $03D7   ({END} handler)
+    0x800E: bytes.fromhex("ADD703"),     # LDA $03D7   (per-frame: wait check)
+    0x8022: bytes.fromhex("E6B0A5B02907D006205380206680"),  # 8-frame tick
     0x80CD: bytes.fromhex("DF"),         # LDA #<clear table
     0x80D1: bytes.fromhex("80"),         # LDA #>clear table
 }
@@ -178,6 +180,110 @@ endhook: LDA $03
          JSR setbanks
 endkeep: LDA $03D7
          RTS
+; ---- D-11 text speed: 4 frames per byte (was 8). A button: while typing, the rest of the
+; page is drawn at once in blocks of up to 15 cells (one PPU-queue entry per frame, the NMI
+; drains one entry per frame); while waiting at {WAIT}, the wait ends.
+; $03D7 bit $10 = "fast" (free bit: engine uses $80/$40/$20/$01, controllers test bit 6).
+; $0100-$011F = block buffer [w][2][top x w][bottom x w] (never written after reset; checked).
+abtn:    LDA $F9               ; new presses, A = bit 7
+         BPL abdone
+         LDA $03D7
+         AND #$20
+         BEQ abtype
+         LDA #$01              ; waiting: let $8015 count it out this frame
+         STA $03DC
+         BNE abdone
+abtype:  LDA $03D7
+         ORA #$10
+         STA $03D7
+abdone:  LDA $03D7
+         RTS
+tick:    INC $B0
+         LDA $03D7
+         AND #$10
+         BNE fast
+         LDA $B0
+         AND #$03
+         BNE tdone
+         JSR $8053
+         JSR $8066
+tdone:   RTS
+fast:    JSR $8053             ; $18/$19 = string, $03DF = next byte
+         LDA $03DF
+         CMP #$FA
+         BCC fglyph
+         CMP #$FD
+         BNE fctl
+         LDA #$1A              ; {BR}: column 26, same frame
+         STA $03DB
+         INC $03DA
+         JMP fast
+fctl:    CMP #$FC              ; {WAIT}/{END} end the fast mode
+         BCC fkeep
+         LDA $03D7
+         AND #$EF
+         STA $03D7
+fkeep:   JSR $8066
+         RTS
+fglyph:  LDA $30               ; reuse the buffer only after the NMI consumed it
+         BNE fdone
+         LDA $03DB
+         CMP #$1A
+         BCC fl1
+         LDA #$34
+         BNE flim
+fl1:     LDA #$1A
+flim:    SEC
+         SBC $03DB             ; cells left on this line
+         CMP #$0F
+         BCC fl2
+         LDA #$0F
+fl2:     STA $0100
+         LDX #$00
+         LDY $03DA
+floop:   LDA ($18),Y
+         CMP #$FA
+         BCS fend
+         STA $0102,X           ; top row
+         INY
+         INX
+         CPX $0100
+         BCC floop
+fend:    STX $0100             ; width
+         LDA #$02
+         STA $0101             ; height
+         LDY #$00
+fb:      LDA $0102,Y           ; bottom row = top + $40 ($BF -> $FF blank)
+         CLC
+         ADC #$40
+         STA $0102,X
+         INX
+         INY
+         CPY $0100
+         BCC fb
+         LDA $03DB             ; PPU address = $22C3 + col (+38 on line 2)
+         CMP #$1A
+         BCC fp1
+         ADC #$25
+fp1:     CLC
+         ADC #$C3
+         STA $18
+         LDA #$22
+         ADC #$00
+         STA $19
+         LDA #$00
+         LDY #$01
+         JSR $E6B0
+         BCS fdone             ; queue full: try again next frame
+         LDA $03DB
+         CLC
+         ADC $0100
+         STA $03DB
+         LDA $03DA
+         CLC
+         ADC $0100
+         STA $03DA
+fdone:   RTS
 ; ---- {PAGE} clear: 4 rows (glyph rows 22-25), source $CD01 = [$A0][1][$FF] ----
 cleartbl: .db $04
          .db $01,$CD,$C0,$22
@@ -407,6 +513,8 @@ def main():
     def put(cpu, b):
         a = cpu2file(cpu); p[a:a + len(b)] = b
     put(0x8066, jsr("pre"))
+    put(0x800E, jsr("abtn"))
+    put(0x8022, bytes([0x4C, labels["tick"] & 0xFF, labels["tick"] >> 8]))
     put(0x8093, jsr("newchar") + b"\xea")
     put(0x80A9, jsr("endhook"))
     put(0x80CD, bytes([labels["cleartbl"] & 0xFF]))

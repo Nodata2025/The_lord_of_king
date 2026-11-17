@@ -11,6 +11,8 @@ for n in string.gmatch(os.getenv("LOK_TARGETS") or "", "%d+") do targets[#target
 local M = emu.memType.nesMemory
 local f, ti, cur, page, pending, saved = 0, 0, -1, 0, nil, nil
 local log = io.open(outdir .. "/pages.txt", "a")
+local presson = os.getenv("LOK_PRESS_A") == "1"
+local pressA, pressed_page = false, -1
 
 emu.addMemoryCallback(function()
   ti = ti + 1
@@ -33,7 +35,18 @@ emu.addMemoryCallback(function()
 end, emu.callbackType.exec, 0x80BC, 0x80BC, emu.cpuType.nes, M)
 
 emu.addEventCallback(function()
+  local i = {}
+  if pressA then i.a = true; pressA = false end
+  emu.setInput(i, 0)
+end, emu.eventType.inputPolled)
+
+emu.addEventCallback(function()
   f = f + 1
+  -- LOK_PRESS_A=1: press A once per page as soon as its first glyph is on screen
+  if presson and cur >= 0 and pressed_page ~= page then
+    local d7 = emu.read(0x03D7, M)
+    if (d7 & 0x20) == 0 and emu.read(0x03DB, M) >= 1 then pressA = true; pressed_page = page end
+  end
   if pending and f == pending then
     local name = string.format("%s/S%02d_p%02d.png", outdir, cur, page)
     local h = io.open(name, "wb"); h:write(emu.takeScreenshot()); h:close()
