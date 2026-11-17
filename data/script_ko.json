@@ -140,7 +140,7 @@
   "S27": {
    "src_sha1": "28c9dade42ae3931f96196a3c15d6c1c827877aa",
    "state": "needs_review",
-   "ko": "안심하시죠.{WAIT}{PAGE}여기는 우리의 테리토리.{BR}더 이상 이곳에는 다가올 수 없습니다.{WAIT}{PAGE}톰슨의 스펠 실드도{BR} 강화해 두었습니다.{WAIT}{PAGE}이것으로 큐티와 텔레파시는 불가능합니다.{WAIT}{PAGE}{END}"
+   "ko": "안심하시길.{WAIT}{PAGE}여기는 우리의 영역.{BR}더 이상 이곳에는 다가올 수 없습니다.{WAIT}{PAGE}톰슨의 스펠 실드도{BR} 강화해 두었습니다.{WAIT}{PAGE}이것으로 큐티와 텔레파시는 불가능합니다.{WAIT}{PAGE}{END}"
   },
   "S28": {
    "src_sha1": "32541ce03102a0c45c2e8d07f59a05e73f8f0a39",
@@ -150,7 +150,7 @@
   "S29": {
    "src_sha1": "635e25611a4db53d8412766399cc2acd3ba0bd38",
    "state": "needs_review",
-   "ko": "흥, 건방지군.{BR}인간이나 페어리 따위가 뭘 할 수 있지.{WAIT}{PAGE}네 스펠 파워를 흡수해서,{BR} 이 세계를 파괴해 주마.{WAIT}{PAGE}{END}"
+   "ko": "흥, 건방지군.{BR}인간이나 페어리 따위가 뭘 할 수 있지?{WAIT}{PAGE}네 스펠 파워를 흡수해서,{BR} 이 세계를 파괴해 주마.{WAIT}{PAGE}{END}"
   },
   "S30": {
    "src_sha1": "9e77be8f6ccea4afd93024b180d5f3c68a4af8f6",
