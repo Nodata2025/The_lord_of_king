@@ -105,6 +105,7 @@ HUD_SITES = {                  # bank 14 file offset: expected original bytes
     0x1C216: bytes.fromhex("84EAEE4D0360"),
 }
 
+WAIT_FRAMES = 60   # D-18 (original $80 = 128 frames, about 2.1 s)
 CTRL = {"{PAGE}": 0xFB, "{WAIT}": 0xFC, "{BR}": 0xFD, "{END}": 0xFE}
 
 # Expected original bytes at each patch site (CPU address in bank 10).
@@ -117,6 +118,7 @@ PATCHES_EXPECT = {
     0x80E8: bytes.fromhex("C3220323"),   # line base table: $22C3, $2303
     0x80CD: bytes.fromhex("DF"),         # LDA #<clear table
     0x80D1: bytes.fromhex("80"),         # LDA #>clear table
+    0x80BD: bytes.fromhex("80"),         # LDA #$80    ({WAIT}: 128 frames)
 }
 
 HOOKS = """
@@ -596,6 +598,7 @@ def main():
     put(0x80A9, jsr("endhook"))
     put(0x80CD, bytes([labels["cleartbl"] & 0xFF]))
     put(0x80D1, bytes([labels["cleartbl"] >> 8]))
+    put(0x80BD, bytes([WAIT_FRAMES]))          # D-18: wait after a page 128 -> 60 frames (~1 s)
 
     # --- CHR: append 128 KB of font sets
     chr_old = bytes(rom[HEADER + PRG_SIZE:])
