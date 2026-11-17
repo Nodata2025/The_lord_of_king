@@ -199,6 +199,9 @@ def main():
             raise SystemExit(f"{sid}: source hash mismatch (stale translation baseline)")
         if e.get("ko"):
             check_layout(sid, e["ko"])
+            ctl = lambda t: re.findall(r"\{(?:WAIT|PAGE|BR|END)\}", t)
+            if ctl(e["ko"]) != ctl(decode(bytes(src[i]))):
+                raise SystemExit(f"{sid}: control token sequence differs from source")
             ko[i] = e["ko"]
 
     # --- pages in script order, glyph sets
