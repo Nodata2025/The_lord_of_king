@@ -114,7 +114,13 @@ tsel:    LDA $F9
          LDA $0100
          CMP #$03
          BNE tsel0
-         JMP tdinc             ; left/right/A/START all step EASY -> NORMAL -> HARD
+         LDA $F9               ; left = easier, right = harder (stops at EASY / HARD)
+         AND #$01
+         BNE tdinc
+         LDA $011E
+         BEQ tnext
+         DEC $011E
+         JMP tdset
 tsel0:   LDA $F9
          AND #$90              ; A or START: execute
          BEQ tback
@@ -123,18 +129,16 @@ tsel0:   LDA $F9
          LDA $0100
          BEQ tgo
          CMP #$03
-         BEQ tdinc
+         BEQ tnext             ; DIFFICULTY: A/START do nothing
          CMP #$01
          BNE topen
          LDA #$20              ; STAGE SELECT
          STA $0563
 tgo:     JMP tleave
-tdinc:   INC $011E
-         LDA $011E
-         CMP #$03
-         BCC tdset
-         LDA #$00
-         STA $011E
+tdinc:   LDA $011E
+         CMP #$02
+         BCS tnext
+         INC $011E
 tdset:   LDA $011E
          EOR #$5A
          STA $011F
