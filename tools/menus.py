@@ -43,7 +43,9 @@ tdfix:   LDA #$01              ; power-on garbage -> NORMAL
          STA $011E
          EOR #$5A
          STA $011F
-tdok:    LDA #$00
+tdok:    LDA #$14              ; D-26: A/START ignored until the menu has been on screen 20 frames
+         STA $0107
+         LDA #$00
          STA $011A             ; damage remainder ($011B/$011C are rewritten every gameplay frame)
          STA $0563
          STA $0100
@@ -86,6 +88,20 @@ tclr0:   LDA clrlo,X
 tloop:   JSR $E408
          JSR cursor
          JSR $E378
+         LDA $0107
+         BEQ tl0
+         LDA $F9               ; a press during the lock restarts it (mashing START keeps
+         AND #$90              ; the menu up instead of picking GAME START)
+         BEQ tln
+         LDA #$14
+         STA $0107
+tln:     LDA $30               ; rows still waiting in the PPU queue: not shown yet
+         BNE tlm
+         DEC $0107
+tlm:     LDA $F9
+         AND #$6F
+         STA $F9
+tl0:
          LDA $F9
          AND #$08              ; up
          BEQ tdown
@@ -247,32 +263,15 @@ tlv:     TXA
          BCC tlv
          RTS
 ; ---- D-17 lives: game start (bank 12 $8A7A) and continue (bank 12 $8CCB) -----------------
-lives0:  LDA #$02
-         LDY $011E
-         BNE lv2
-         LDA #$09              ; EASY: 9 lives
-lv2:     STA $96
-         RTS
 govr:    LDA $011E
          CMP #$02
-         BNE lives0
+         BEQ gohard
+         JMP LIVES0
+gohard:
          LDA #$00              ; HARD: no continue, back to the opening
          STA $0102
          LDA #$0F
          JMP $E073
-; ---- bank 12 $8709 (was JSR $8770, the hidden-command input recorder) --------------------
-thook:   LDA $0102
-         CMP #MAGIC
-         BNE th9
-         LDA $0103
-         CMP #MAGIC2
-         BNE th9
-         LDA $0556             ; wait until the logo fade-in is done ($87F7 sets bit 7)
-         BPL th9
-         LDA $F9               ; reopen request: act as if START was pressed
-         ORA #$10
-         STA $F9
-th9:     RTS
 ; ---- SOUND TEST loop (bank 12 $88BE jumps here) -------------------------------------------
 sndinit: LDA #$00
          STA $0106             ; row: 0 BGM, 1 EFFECT
@@ -626,7 +625,7 @@ SITES = {
 # Lives in bank 12 $8770-$87EE, the original hidden-command recorder (its only call, $8709,
 # now goes to thook, and nothing else jumps or branches into it). Written while the title
 # screen is built with rendering off ($86CC JSR $89F6 -> JSR credit).
-CREDIT_ORG, CREDIT_FILE, CREDIT_END = 0x8770, 0x18770, 0x87EF
+CREDIT_ORG, CREDIT_FILE, CREDIT_END = 0x8770, 0x18770, 0x87F7   # $87EF-$87F6 = its key table
 CREDIT_TEXT, CREDIT_PPU = "[CREATED BY NODATA]", 0x2386    # row 28, columns 6-24
 CREDIT_SRC = """
 sndret:  JSR $E4EA             ; D-24: leaving SOUND TEST stops its sound and restarts
@@ -652,6 +651,19 @@ tbanks:  LDA #$00
          LDA #TBANKS
          STA $03
          RTS
+; ---- bank 12 $8709 (was JSR $8770, the hidden-command recorder; moved here from bank 13)
+thook:   LDA $0556             ; logo fade-in not done ($87F7 sets bit 7): START does nothing
+         BMI th1               ; yet (D-26: mashing START at boot opened the menu unseen
+         LDA $F9               ; and the next press started the game)
+         AND #$EF
+         STA $F9
+         RTS
+th1:     JSR reopen
+         BNE th9
+         LDA $F9               ; reopen request: act as if START was pressed
+         ORA #$10
+         STA $F9
+th9:     RTS
 skipsh:  JSR reopen            ; D-25: PUSH START blink ($8859) only on a normal title
          BEQ ss1
          JMP $8859
@@ -678,6 +690,19 @@ BRACKET_TILES = {"[": 0xCC, "]": 0xCD}
 TITLE_BANKS = 0xFE
 
 
+# lives0 lives in the dead tail of the old SOUND TEST slide loop (bank 12 $88A1-$88AC, left
+# unused by the snd_slide patch, D-16) to make room in bank 13.
+LIVES0_ORG, LIVES0_FILE = 0x88A1, 0x188A1
+LIVES0_SRC = """
+lives0:  LDA #$02
+         LDY $011E
+         BNE lv2
+         LDA #$09              ; EASY: 9 lives
+lv2:     STA $96
+         RTS
+"""
+
+
 def credit_tiles(text):
     return [0xFF if c == " " else BRACKET_TILES[c] if c in BRACKET_TILES else
             "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".index(c) for c in text]
@@ -695,7 +720,11 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     ccode, cl = assemble(csrc, CREDIT_ORG)
     if CREDIT_ORG + len(ccode) > CREDIT_END:
         raise SystemExit("menus: credit code too large")
-    tcode, tl = assemble(TITLE_SRC, TITLE_ORG, {"sndret": cl["sndret"]})
+    lcode, ll = assemble(LIVES0_SRC, LIVES0_ORG)
+    if len(lcode) > 12 or orig[LIVES0_FILE:LIVES0_FILE + 12] != bytes.fromhex("85E8200 8E42078E3A5E8F0E7".replace(" ", "")):
+        raise SystemExit("menus: lives0 area")
+    p[LIVES0_FILE:LIVES0_FILE + len(lcode)] = lcode
+    tcode, tl = assemble(TITLE_SRC.replace("LIVES0", "$%04X" % ll["lives0"]), TITLE_ORG, {"sndret": cl["sndret"]})
     if TITLE_ORG + len(tcode) > bank13_free_end + 1:
         raise SystemExit("menus: bank 13 code too large")
     scode, sl = assemble(SEL_SRC, SEL_ORG)
@@ -716,7 +745,7 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     def put(name, b):
         off = SITES[name][0]; p[off:off + len(b)] = b
     put("title_call", jsr(tl["tmenu"]))
-    put("title_rec", jsr(tl["thook"]))
+    put("title_rec", jsr(cl["thook"]))
     put("snd_loop", jmp(tl["sndinit"]))
     put("demo_list", jsr(sl["dlist"]))
     put("demo_loop", jmp(sl["dloopD"]))
@@ -724,7 +753,7 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     put("stage_loop", jmp(sl["sloopS"]))
     put("intro_start", jsr(dl["iskip"]) + b"\xea")
     put("end_loop", jsr(dl["endchk"]))
-    put("lives_init", jsr(tl["lives0"]) + b"\xea")
+    put("lives_init", jsr(ll["lives0"]) + b"\xea")
     p[CREDIT_FILE:CREDIT_FILE + len(ccode)] = ccode
     put("credit_call", jsr(cl["credit"]))
     put("title_blink", jsr(cl["skipsh"]))
