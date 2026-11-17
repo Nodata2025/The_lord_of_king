@@ -318,8 +318,7 @@ sfx:     LDX $0301             ; original "play effect $0301+1"
 sn2:     LDA $F9
          AND #$60              ; B/SELECT: stop and go back to OMAKE MODE
          BEQ sn3
-         JSR $E4EA
-         JSR $E4F9
+         JSR sndret            ; stop, then the title BGM again (bank 12, D-24)
          LDA #MAGIC
          STA $0102
          LDA #MAGIC2
@@ -629,6 +628,11 @@ SITES = {
 CREDIT_ORG, CREDIT_FILE, CREDIT_END = 0x8770, 0x18770, 0x87EF
 CREDIT_TEXT, CREDIT_PPU = "[CREATED BY NODATA]", 0x2386    # row 28, columns 6-24
 CREDIT_SRC = """
+sndret:  JSR $E4EA             ; D-24: leaving SOUND TEST stops its sound and restarts
+         JSR $E4F9             ;       the title BGM (no. 0, as the title init $86E9 does)
+         LDA #$00
+         STA $47
+         JMP $E508
 credit:  JSR $89F6
          LDA #<clist
          STA $18
@@ -665,7 +669,13 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
         e = bytes.fromhex(exp)
         if orig[off:off + len(e)] != e:
             raise SystemExit(f"menus: unexpected bytes at {name} (file ${off:05X})")
-    tcode, tl = assemble(TITLE_SRC, TITLE_ORG)
+    t = credit_tiles(CREDIT_TEXT)
+    csrc = (CREDIT_SRC.replace("TBANKS", "$%02X" % TITLE_BANKS).replace("CPPULO", "$%02X" % (CREDIT_PPU & 0xFF)).replace("CPPUHI", "$%02X" % (CREDIT_PPU >> 8))
+            .replace("CTEXT", ".db " + ",".join("$%02X" % v for v in [len(t), 1] + t)))
+    ccode, cl = assemble(csrc, CREDIT_ORG)
+    if CREDIT_ORG + len(ccode) > CREDIT_END:
+        raise SystemExit("menus: credit code too large")
+    tcode, tl = assemble(TITLE_SRC, TITLE_ORG, {"sndret": cl["sndret"]})
     if TITLE_ORG + len(tcode) > bank13_free_end + 1:
         raise SystemExit("menus: bank 13 code too large")
     scode, sl = assemble(SEL_SRC, SEL_ORG)
@@ -695,12 +705,6 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     put("intro_start", jsr(dl["iskip"]) + b"\xea")
     put("end_loop", jsr(dl["endchk"]))
     put("lives_init", jsr(tl["lives0"]) + b"\xea")
-    t = credit_tiles(CREDIT_TEXT)
-    csrc = (CREDIT_SRC.replace("TBANKS", "$%02X" % TITLE_BANKS).replace("CPPULO", "$%02X" % (CREDIT_PPU & 0xFF)).replace("CPPUHI", "$%02X" % (CREDIT_PPU >> 8))
-            .replace("CTEXT", ".db " + ",".join("$%02X" % v for v in [len(t), 1] + t)))
-    ccode, cl = assemble(csrc, CREDIT_ORG)
-    if CREDIT_ORG + len(ccode) > CREDIT_END:
-        raise SystemExit("menus: credit code too large")
     p[CREDIT_FILE:CREDIT_FILE + len(ccode)] = ccode
     put("credit_call", jsr(cl["credit"]))
     put("title_bank", jsr(cl["tbanks"]) + b"\xea" * 3)
