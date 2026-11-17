@@ -615,8 +615,32 @@ SITES = {
     "lives_init":  (0x18A7A, "A9028596"),       # LDA #2 / STA $96 -> JSR lives0 / NOP (D-17)
     "lives_cont":  (0x18CCB, "A9028596"),       # continue          -> JSR govr / NOP
     "lives_stage": (0x1512C, "A9028596"),       # STAGE SELECT      -> JSR slives / NOP
+    "credit_call": (0x186CC, "20F689"),         # title build: JSR $89F6 -> JSR credit (D-23)
+    "credit_area": (0x18770, "A5F9F015A82910D0"),  # dead hidden-command recorder
     "snd_slide":   (0x18894, "18A5E6690185E6A5E8690029018"[:0] + "18A5E6690185E6A5E869002901"),
 }
+
+
+# D-23: "CREATED BY NODATA" under the title (row 28), in the game's own English tiles.
+# Lives in bank 12 $8770-$87EE, the original hidden-command recorder (its only call, $8709,
+# now goes to thook, and nothing else jumps or branches into it). Written while the title
+# screen is built with rendering off ($86CC JSR $89F6 -> JSR credit).
+CREDIT_ORG, CREDIT_FILE, CREDIT_END = 0x8770, 0x18770, 0x87EF
+CREDIT_TEXT, CREDIT_PPU = "CREATED BY NODATA", 0x2387      # row 28, columns 7-23
+CREDIT_SRC = """
+credit:  JSR $89F6
+         LDA #<clist
+         STA $18
+         LDA #>clist
+         STA $19
+         JMP $E683
+clist:   .db $01,<ctext,>ctext,CPPULO,CPPUHI
+ctext:   CTEXT
+"""
+
+
+def credit_tiles(text):
+    return [0xFF if c == " " else "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".index(c) for c in text]
 
 
 def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_free_end):
@@ -655,6 +679,14 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     put("intro_start", jsr(dl["iskip"]) + b"\xea")
     put("end_loop", jsr(dl["endchk"]))
     put("lives_init", jsr(tl["lives0"]) + b"\xea")
+    t = credit_tiles(CREDIT_TEXT)
+    csrc = (CREDIT_SRC.replace("CPPULO", "$%02X" % (CREDIT_PPU & 0xFF)).replace("CPPUHI", "$%02X" % (CREDIT_PPU >> 8))
+            .replace("CTEXT", ".db " + ",".join("$%02X" % v for v in [len(t), 1] + t)))
+    ccode, cl = assemble(csrc, CREDIT_ORG)
+    if CREDIT_ORG + len(ccode) > CREDIT_END:
+        raise SystemExit("menus: credit code too large")
+    p[CREDIT_FILE:CREDIT_FILE + len(ccode)] = ccode
+    put("credit_call", jsr(cl["credit"]))
     put("lives_cont", jsr(tl["govr"]) + b"\xea")
     put("lives_stage", jsr(sl["slives"]) + b"\xea")
     # D-16: SOUND TEST appears at once: skip the slide ($E6/$E8 end values) and go on at $88AD
