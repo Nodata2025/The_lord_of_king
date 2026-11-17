@@ -17,6 +17,17 @@
 
 패치는 [dist/](dist/)에 버전별로 올립니다(`LordOfKing_KR_v<버전>.ips`). 일본판 원본 롬에 IPS로 적용하세요. 변경 내용은 [CHANGELOG.md](CHANGELOG.md).
 
+## 타이틀 메뉴 (v0.8.0~)
+
+타이틀에서 START → GAME START / STAGE SELECT / OMAKE MODE(SOUND TEST, DEMO SELECT).
+원작에 숨어 있던 화면이라 조작도 원작 그대로입니다.
+
+| 화면 | 조작 |
+|---|---|
+| STAGE SELECT | SELECT 이동, A 시작 |
+| DEMO SELECT | SELECT 이동, A 재생 |
+| SOUND TEST | ↑↓ BGM 번호, ←→ 효과음 번호, B BGM 재생, A 효과음, SELECT 정지 (나가려면 리셋) |
+
 ## 도구
 
 ```sh

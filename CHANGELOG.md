@@ -2,6 +2,12 @@
 
 패치 파일은 `dist/LordOfKing_KR_v<버전>.ips`. `-dev`가 붙은 버전은 검수 전 개발용입니다.
 
+## v0.8.0-dev (2026-11-17)
+- 타이틀에서 START를 누르면 메뉴 표시: GAME START / STAGE SELECT / OMAKE MODE.
+  - OMAKE MODE: SOUND TEST / DEMO SELECT (B로 상위 메뉴).
+  - STAGE SELECT·SOUND TEST·DEMO SELECT는 원작에 숨어 있던 화면을 이름·내용 그대로 사용.
+- 원작의 숨은 커맨드 3종 제거(메뉴로 대체).
+
 ## v0.7.0-dev (2026-11-17)
 - 화자 표시: 대사 위에 [로슈]·[큐티]처럼 말하는 사람 이름 표시(서술·스태프롤 제외).
 - 한 페이지 안에서 화자가 바뀌던 3곳(S10 두 페이지, S32)을 화자별 페이지로 분리.
