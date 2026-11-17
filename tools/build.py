@@ -353,7 +353,12 @@ def tokens(text):
 
 def load_script():
     path = os.path.join(ROOT, "data", "script_ko.json")
-    return json.load(open(path, encoding="utf-8"))
+    d = json.load(open(path, encoding="utf-8"))
+    # D-22: {LOGO1}/{LOGO2} = top/bottom 16 cells of the "-Nodata-" logo (tools/glyphs.py)
+    for e in d["entries"].values():
+        if e.get("ko"):
+            e["ko"] = e["ko"].replace("{LOGO1}", glyphs.logo_chars(0)).replace("{LOGO2}", glyphs.logo_chars(1))
+    return d
 
 
 def source_entries(p):
@@ -433,7 +438,8 @@ def main():
             raise SystemExit(f"{sid}: {len(names)} speakers for {len(text_pages)} text pages")
         for pi, nm in zip(text_pages, names):
             if nm:
-                tag = "[" + nm + "]"
+                # D-22: a name starting with "=" is a raw line (no brackets), e.g. a centred caption
+                tag = nm[1:] if nm.startswith("=") else "[" + nm + "]"
                 if len(tag) > LINE_CELLS:
                     raise SystemExit(f"{sid}: speaker tag too long")
                 name_of[(i, pi)] = tag

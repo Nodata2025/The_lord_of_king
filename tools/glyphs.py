@@ -23,8 +23,35 @@ def font(path=None):
     return _font_cache[path]
 
 
+# D-22: the owner's "-Nodata-" logo (data/gfx/nodata_logo.png, 128x28, 1-bit) is cut into
+# 8x16 cells and reached through private-use characters: row r (0 top, 1 bottom), column c
+# -> chr(LOGO_BASE + 16*r + c). The logo sits 2 px down inside its 32 px band.
+LOGO_BASE = 0xE000
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "gfx", "nodata_logo.png")
+_logo = None
+
+
+def logo_chars(row):
+    return "".join(chr(LOGO_BASE + 16 * row + c) for c in range(16))
+
+
+def _logo_cell(code):
+    global _logo
+    if _logo is None:
+        src = Image.open(LOGO_PATH).convert("L")
+        if src.size != (128, 28):
+            raise SystemExit("logo must be 128x28")
+        _logo = Image.new("L", (128, 32), 0)
+        _logo.paste(src, (0, 2))
+    k = code - LOGO_BASE
+    r, c = divmod(k, 16)
+    return _logo.crop((8 * c, 16 * r, 8 * c + 8, 16 * r + 16)).point(lambda v: 1 if v >= 128 else 0)
+
+
 def glyph_bitmap(ch, fpath=None):
     """8x16 1-bit image of one character; fails if it does not fit 8 px."""
+    if LOGO_BASE <= ord(ch) < LOGO_BASE + 32:
+        return _logo_cell(ord(ch))
     f = font(fpath)
     im = Image.new("L", (16, 16), 0)
     ImageDraw.Draw(im).text((0, Y_OFF), ch, font=f, fill=255)
