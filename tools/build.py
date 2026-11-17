@@ -26,7 +26,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BANK_FILE, BANK_CPU = 0x14000, 0x8000
 PTR_TABLE, PTR_COUNT = 0x80EC, 78
 TEXT_START, TEXT_END = 0x8188, 0x8F01          # original script region
-SPILL_START, SPILL_END = 0x928E, 0x9E00        # $FF-filled tail of bank 10 (candidate free)
+SPILL_START, SPILL_END = 0x928E, 0x9A00        # $FF-filled tail of bank 10; $9A00-$9DFF = menus
 CODE_ORG, CODE_END = 0x9E00, 0xA000
 
 LINE_CELLS = 26
@@ -104,179 +104,6 @@ HUD_SITES = {                  # bank 14 file offset: expected original bytes
     0x1C06A: bytes.fromhex("84EA60"),
     0x1C216: bytes.fromhex("84EAEE4D0360"),
 }
-
-# ---- title menu (D-14): START on the title opens GAME START / STAGE SELECT / OMAKE MODE
-# (OMAKE: SOUND TEST / DEMO SELECT). The value chosen goes to $0563, the flag the original
-# hidden-command check ($878A) used to set, so the original branches at $871B run unchanged:
-# 0 = game, $20 = STAGE SELECT (mode $33), $80 = SOUND TEST ($8894), $40 = DEMO SELECT ($30).
-# $878A is no longer called, which removes the hidden commands.
-TMENU_FILE, TMENU_CPU = 0x1A000, 0xA000          # bank 13, mapped at $A000 on the title
-TMENU_FREE = (0xBC40, 0xBFFF)                    # inside the $FF run $BC3E-$BFFF
-TMENU_CALL = (0x18718, bytes.fromhex("208A87"))  # bank 12 $8718: JSR $878A
-_FONT = {**{str(d): d for d in range(10)}, **{chr(65 + k): 0x0A + k for k in range(26)}, " ": 0xFF}
-def _row(text, cells=18):
-    t = ("   " + text).ljust(cells)[:cells]
-    return ".db %d,1,%s" % (cells, ",".join("$%02X" % _FONT[c] for c in t))
-def _cur(k):
-    return ".db 1,3,%s" % ",".join("$26" if i == k else "$FF" for i in range(3))
-TMENU_SRC = """
-; RAM: $0100 = cursor, $0101 = level (0 main, 1 omake); free outside the text engine.
-; Rows 16-18 (row 15 is still inside the logo's screen split). Cursor = sprite 0 (heart tile
-; $26 from the sprite pattern table, like the original select screens) with sprite palette 0.
-tmenu:   LDA #$00
-         STA $0563
-         STA $0100
-         STA $0101
-         LDA #$11              ; sprite palette 0 colours 1-3
-         STA $18
-         LDA #$3F
-         STA $19
-         LDA #<spal
-         LDY #>spal
-         JSR qput
-         JSR drawlvl
-tloop:   JSR $E408
-         JSR cursor
-         JSR $E378
-         LDA $F9
-         AND #$08              ; up
-         BEQ tdown
-         DEC $0100
-         BPL tnext
-         JSR nitems
-         STA $0100
-         JMP tnext
-tdown:   LDA $F9
-         AND #$24              ; down or select
-         BEQ tsel
-         INC $0100
-         JSR nitems
-         CMP $0100
-         BCS tnext
-         LDA #$00
-         STA $0100
-         JMP tnext
-tsel:    LDA $F9
-         AND #$90              ; start or A
-         BEQ tback
-         LDA $0101
-         BNE tsel1
-         LDA $0100
-         BEQ tgo
-         CMP #$01
-         BNE topen
-         LDA #$20              ; STAGE SELECT
-         STA $0563
-tgo:     JMP tleave
-topen:   LDA #$01
-         STA $0101
-         LDA #$00
-         STA $0100
-         JSR drawlvl
-         JMP tnext
-tsel1:   LDA $0100
-         BNE tdemo
-         LDA #$80              ; SOUND TEST
-         STA $0563
-         BNE tgo
-tdemo:   LDA #$40              ; DEMO SELECT
-         STA $0563
-         BNE tgo
-tback:   LDA $F9
-         AND #$40              ; B: back to the main menu
-         BEQ tnext
-         LDA $0101
-         BEQ tnext
-         LDA #$00
-         STA $0101
-         LDA #$02
-         STA $0100
-         JSR drawlvl
-tnext:   JMP tloop
-cursor:  LDA $0100             ; y = 8 * (16 + cursor) - 1
-         ASL A
-         ASL A
-         ASL A
-         CLC
-         ADC #$7F
-         STA $0200
-         LDA #$26
-         STA $0201
-         LDA #$00
-         STA $0202
-         LDA #$40              ; x = column 8
-         STA $0203
-         RTS
-nitems:  LDA $0101
-         BEQ ni0
-         LDA #$01
-         RTS
-ni0:     LDA #$02
-         RTS
-drawlvl: LDA $0101
-         BNE dlo
-         LDA #<m0
-         LDY #>m0
-         LDX #$00
-         JSR qrow
-         LDA #<m1
-         LDY #>m1
-         LDX #$01
-         JSR qrow
-         LDA #<m2
-         LDY #>m2
-         LDX #$02
-         JMP qrow
-dlo:     LDA #<o0
-         LDY #>o0
-         LDX #$00
-         JSR qrow
-         LDA #<o1
-         LDY #>o1
-         LDX #$01
-         JSR qrow
-         LDA #<bl
-         LDY #>bl
-         LDX #$02
-qrow:    PHA
-         LDA rowlo,X
-         STA $18
-         LDA rowhi,X
-         STA $19
-         PLA
-qput:    JSR $E6B0             ; queue full: wait a frame and retry (as the original does)
-         BCC qok
-         JSR $E378
-         JMP qput
-qok:     RTS
-tleave:  LDA #$F0              ; hide the cursor
-         STA $0200
-         LDX #$00              ; clear the menu rows (SOUND TEST keeps this screen)
-tclr:    TXA
-         PHA
-         LDA #<bl
-         LDY #>bl
-         JSR qrow
-         PLA
-         TAX
-         INX
-         CPX #$03
-         BCC tclr
-         RTS
-rowlo:   .db $07,$27,$47
-rowhi:   .db $22,$22,$22
-spal:    .db 3,1,$16,$27,$30
-m0:      ROW_GAME
-m1:      ROW_STAGE
-m2:      ROW_OMAKE
-o0:      ROW_SOUND
-o1:      ROW_DEMO
-bl:      ROW_BLANK
-"""
-TMENU_SRC = (TMENU_SRC.replace("ROW_GAME", _row("GAME START")).replace("ROW_STAGE", _row("STAGE SELECT"))
-             .replace("ROW_OMAKE", _row("OMAKE MODE")).replace("ROW_SOUND", _row("SOUND TEST"))
-             .replace("ROW_DEMO", _row("DEMO SELECT")).replace("ROW_BLANK", _row(""))
-             )
 
 CTRL = {"{PAGE}": 0xFB, "{WAIT}": 0xFC, "{BR}": 0xFD, "{END}": 0xFE}
 
@@ -736,17 +563,9 @@ def main():
     p[0x1C06A:0x1C06D] = bytes([0x4C, h1 & 0xFF, h1 >> 8])                 # JMP hudset1
     p[0x1C216:0x1C21C] = bytes([0x20, h2 & 0xFF, h2 >> 8, 0x60, 0xEA, 0xEA])  # JSR hudset2 / RTS
 
-    # --- title menu (bank 13 free area)
-    tcode, tlabels = assemble(TMENU_SRC, TMENU_FREE[0])
-    if TMENU_FREE[0] + len(tcode) > TMENU_FREE[1] + 1:
-        raise SystemExit("title menu does not fit")
-    ta = TMENU_FILE + TMENU_FREE[0] - TMENU_CPU
-    if any(x != 0xFF for x in orig_p[ta:ta + len(tcode)]):
-        raise SystemExit("bank 13 free area is not $FF")
-    if orig_p[TMENU_CALL[0]:TMENU_CALL[0] + 3] != TMENU_CALL[1]:
-        raise SystemExit("unexpected bytes at bank 12 $8718")
-    p[ta:ta + len(tcode)] = tcode
-    p[TMENU_CALL[0]:TMENU_CALL[0] + 3] = bytes([0x20, tlabels["tmenu"] & 0xFF, tlabels["tmenu"] >> 8])
+    # --- title menu and select screens (tools/menus.py, D-14/D-15)
+    import menus
+    menu_report = menus.apply(p, orig_p, FIXED_FREE[0] + len(mcode), FIXED_FREE[1], 0xBFFF, 0x9E00)
 
     # --- hooks
     code, labels = assemble(HOOKS.replace("FIRST", "$%02X" % FIRST_SET_BANK), CODE_ORG)
@@ -813,7 +632,7 @@ def main():
         "text_bytes": used,
         "hook_bytes": len(code),
         "menu_hook_bytes": len(mcode),
-        "title_menu_bytes": len(tcode),
+        "menus": menu_report,
         "menu_set": len(sets) - 1,
         "hook_labels": {k: "$%04X" % v for k, v in labels.items()},
     }

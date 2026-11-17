@@ -2,6 +2,15 @@
 
 패치 파일은 `dist/LordOfKing_KR_v<버전>.ips`. `-dev`가 붙은 버전은 검수 전 개발용입니다.
 
+## v0.9.0-dev (2026-11-17)
+- 메뉴가 열리면 로고 아래(저작권 표시 포함)를 전부 지우고 메뉴만 표시.
+- 버튼 통일: A/START = 실행, B/SELECT = 나가기. 메인 메뉴에서 나가면 타이틀로.
+- STAGE SELECT: STAGE 1-1 추가(1-1~6-2, 11개), 방향키 이동.
+- DEMO SELECT: DEMO 1, 2(오프닝), 11(엔딩, 원작의 숨은 커맨드 전용) 추가(1~11), 방향키 이동. DEMO 1·2도 끝나거나 건너뛰면 목록으로.
+- SOUND TEST: ♥ 커서로 BGM/EFFECT 줄 선택, 좌우로 번호, A/START 재생, B/SELECT로 나가기.
+- 셀렉트 화면에서 나가면 들어갔던 메뉴 항목으로 복귀.
+- 데모 셀렉트 안의 숨은 커맨드도 제거.
+
 ## v0.8.0-dev (2026-11-17)
 - 타이틀에서 START를 누르면 메뉴 표시: GAME START / STAGE SELECT / OMAKE MODE.
   - OMAKE MODE: SOUND TEST / DEMO SELECT (B로 상위 메뉴).
