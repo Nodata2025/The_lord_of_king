@@ -276,7 +276,9 @@ gohard:
          LDA #$0F
          JMP $E073
 ; ---- SOUND TEST loop (bank 12 $88BE jumps here) -------------------------------------------
-sndinit: LDA #$00
+sndinit: LDA #$00              ; D-36: entering SOUND TEST stops the title BGM
+         LDY #$07
+         JSR FAR
          STA $0106             ; row: 0 BGM, 1 EFFECT
          LDA #$11
          STA $18
@@ -313,25 +315,19 @@ sn1:     LDA $F9
          BNE sfx
          JSR $88E4             ; original "play BGM $0300"
          JMP snd
-sfx:     JSR $88F7             ; original "play effect $0301+1" (tail of $88F3)
+sfx:     LDA #$02              ; play effect $0301+1 (bank 11, D-36)
+         LDY #$07
+         JSR FAR
          JMP snd
 sn2:     LDA $F9
-         AND #$60              ; B/SELECT: stop and go back to OMAKE MODE
-         BEQ sn3
-         JSR sndret            ; stop, then the title BGM again (bank 12, D-24)
-         LDA #MAGIC
-         STA $0102
-         LDA #MAGIC2
-         STA $0103
-         LDA #$01
-         STA $0104
-         LDA #$00
-         STA $0105
-         STA $E6               ; D-19: back to the title nametable directly (no mode change),
-         STA $E8               ;       the menu reopens at SOUND TEST via the request above
-         LDA #$F0
-         STA $0200
-         JSR $E408             ; push the hidden cursor to OAM now
+         AND #$60              ; B/SELECT: sound playing -> stop it; silent -> back to OMAKE
+         BEQ sn3               ;   MODE (D-19/D-24/D-36: title BGM again, menu reopened at
+         LDA #$01              ;   SOUND TEST, title nametable, cursor hidden - bank 11)
+         LDY #$07
+         JSR FAR
+         BNE snq
+         JMP snd
+snq:     JSR $E408             ; push the hidden cursor to OAM now
          JMP $8718
 sn3:     LDA $F9
          AND #$03              ; left/right: change the number on this row

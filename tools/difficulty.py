@@ -31,8 +31,8 @@ disp:    LDA dhi,Y
          PHA
          LDA $011D
          RTS
-dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1,<ucheat-1
-dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1,>ucheat-1
+dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1,<ucheat-1,<r_snd-1
+dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1,>ucheat-1,>r_snd-1
 ; ---- 0: damage taken (was $C52D: A = attack id) ----
 r_dmg:   AND #$3F
          TAY
@@ -147,6 +147,50 @@ r_hit:   LDY $011E
          RTS
 hn:      LDA #$00
          STA $011D
+         RTS
+; ---- 7: SOUND TEST sound control (D-36), A = op ----
+;   0: stop everything (entering SOUND TEST)
+;   1: B/SELECT: sound playing -> stop it, A=0; nothing playing -> stop, title BGM 0 again,
+;      reopen request (OMAKE, SOUND TEST row), title nametable, hidden cursor, A=1
+;   2: play effect $0301+1 (sound engine re-enabled first if a finished jingle turned it off)
+r_snd:   CMP #$02
+         BEQ rs2
+         TAX
+         BEQ rs0
+         LDA $B6
+         AND #$02
+         ORA $C1
+         ORA $C2
+         BEQ rs1
+rs0:     JSR $E4EA
+         JSR $E4F9
+         LDA #$00
+         STA $011D
+         RTS
+rs1:     JSR $E4EA
+         JSR $E4F9
+         LDA #$00
+         STA $47
+         STA $0105
+         STA $E6
+         STA $E8
+         JSR $E508
+         LDA #$A5
+         STA $0102
+         LDA #$5A
+         STA $0103
+         LDA #$01
+         STA $0104
+         STA $011D
+         LDA #$F0
+         STA $0200
+         RTS
+rs2:     LDA $B6
+         BNE rs3
+         JSR $E4F9
+rs3:     LDX $0301
+         INX
+         STX $C1
          RTS
 """
 
