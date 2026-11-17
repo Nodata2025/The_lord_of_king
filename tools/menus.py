@@ -13,7 +13,7 @@ with bank 13 at $A000; STAGE / DEMO SELECT in bank 10 at $8000.
 from asm6502 import assemble
 
 FONT = {**{str(d): d for d in range(10)}, **{chr(65 + k): 0x0A + k for k in range(26)},
-        " ": 0xFF, "-": 0x2D}
+        " ": 0xFF, "-": 0x2D, "[": 0xCC, "]": 0xCD}   # brackets: title bank copy (D-23), below the split only
 
 
 def text(s):
@@ -370,10 +370,10 @@ d2:      ROW_DHARD
 
 TITLE_SRC = (TITLE_SRC.replace("ROW_GAME", row("GAME START")).replace("ROW_STAGE", row("STAGE SELECT"))
              .replace("ROW_OMAKE", row("OMAKE MODE")).replace("ROW_SOUND", row("SOUND TEST"))
-             .replace("ROW_DEMO", row("DEMO SELECT")).replace("ROW_BLANK", row(""))
-             .replace("ROW_DEASY", text("DIFFICULTY  EASY  "))
-             .replace("ROW_DNORMAL", text("DIFFICULTY  NORMAL"))
-             .replace("ROW_DHARD", text("DIFFICULTY  HARD  "))
+             .replace("ROW_DEMO", row("DEMO SELECT")).replace("ROW_BLANK", row("", 19))
+             .replace("ROW_DEASY", text("DIFFICULTY [EASY]  "))
+             .replace("ROW_DNORMAL", text("DIFFICULTY [NORMAL]"))
+             .replace("ROW_DHARD", text("DIFFICULTY [HARD]  "))
              .replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC))
 
 # --------------------------------------------------------------------------------------------

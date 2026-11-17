@@ -2,6 +2,9 @@
 
 패치 파일은 `dist/LordOfKing_KR_v<버전>.ips`. `-dev`가 붙은 버전은 검수 전 개발용입니다.
 
+## v0.12.5-dev (2026-11-17)
+- 타이틀 메뉴 난이도 표시에 대괄호: DIFFICULTY [EASY] / [NORMAL] / [HARD].
+
 ## v0.12.4-dev (2026-11-17)
 - SOUND TEST에서 나오면 음악이 꺼져 있던 문제 수정: 나올 때 타이틀 음악(BGM 0)을 다시 재생.
 
