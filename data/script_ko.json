@@ -1,0 +1,396 @@
+{
+ "format": "lok-script-ko/1",
+ "note": "Source text is not stored; regenerate with tools/extract_script.py. src_sha1 = SHA-1 of the original entry bytes.",
+ "entries": {
+  "S00": {
+   "src_sha1": "0fe5d3069c6268c6e33dafb3533040aa75b0faaa",
+   "state": "in_progress",
+   "ko": "로슈……{BR}로슈……{WAIT}{PAGE}{END}"
+  },
+  "S01": {
+   "src_sha1": "8c5eee2f0626d9ed6c5fefb1546e52f9531bff55",
+   "state": "in_progress",
+   "ko": "로슈…… 기다리고 있어요.{WAIT}{PAGE}{END}"
+  },
+  "S02": {
+   "src_sha1": "9f70cfd50a1a74c7fd6b8bc4e22564df51c912b4",
+   "state": "in_progress",
+   "ko": "또, 그 꿈인가……!{WAIT}{PAGE}{END}"
+  },
+  "S03": {
+   "src_sha1": "5bb22894e8eb61f2b960bbe32bdfe34daa776798",
+   "state": "in_progress",
+   "ko": "나는 로슈!{BR}고등학교 1학년이다.{WAIT}{PAGE}{END}"
+  },
+  "S04": {
+   "src_sha1": "020c8919a78a6ce6d2d88d804430dc05e123dcff",
+   "state": "in_progress",
+   "ko": "그 꿈은 대체 뭘까.{BR}그리고 그녀는…….{WAIT}{PAGE}{END}"
+  },
+  "S05": {
+   "src_sha1": "6d1f205d0dfb3307f524e2493ac2386ce6925811",
+   "state": "in_progress",
+   "ko": "그리고 그날, 나는 등굣길을{BR} 걷고 있었다.{WAIT}{PAGE}로슈……{BR}로슈……{WAIT}{PAGE}{END}"
+  },
+  "S06": {
+   "src_sha1": "204280b272b05fb7cc1e06f53121dd4437c0d015",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S07": {
+   "src_sha1": "b68542373c05c0ed25231d09955b2c699d37c45b",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S08": {
+   "src_sha1": "effac83925fbda6ef0dbf5665324c6f4e94bd245",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S09": {
+   "src_sha1": "7b5321ff86b9f8b37f192a7bc3389037075fb5a6",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S10": {
+   "src_sha1": "c66e5cae6e68ad40b2a37e0f420bca450232130b",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S11": {
+   "src_sha1": "7c14e8d42092061778d6e240f8eeb2ff04266adc",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S12": {
+   "src_sha1": "1edca94d515c845baa43253bf0bd4dc612091eef",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S13": {
+   "src_sha1": "3d4afafe6ff6e33cb257f2818d6b271453442844",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S14": {
+   "src_sha1": "fd8b99efa6b684161f468c3eee1b0c0c89d1d529",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S15": {
+   "src_sha1": "4d8c63eb12b6d79e5b6739a43232a79c6986a41d",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S16": {
+   "src_sha1": "ce81a958b79b9704b05c8b06f1148f304a37e5cc",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S17": {
+   "src_sha1": "8b717c2f50ad2202e8777eff10bd25963e366a5b",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S18": {
+   "src_sha1": "d4cc6a8ef2ebd2368a4ce90291d68e67ae63a38f",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S19": {
+   "src_sha1": "bcfc1dd999e9ae5472f7f5fe078a3e8374cd2140",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S20": {
+   "src_sha1": "97198b90028ae435ad5b5195fe91a43663cea17d",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S21": {
+   "src_sha1": "3aa6b75e73b065fafb9ab6485fca96be2c777c0e",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S22": {
+   "src_sha1": "74615ebced94c61a71ca5285454e55a9a0c61423",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S23": {
+   "src_sha1": "f0f472c6eed5ca889ca553fd52034b045cd37509",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S24": {
+   "src_sha1": "323ba97e40f7b053fd7e6ecbf41fab8b5c74f713",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S25": {
+   "src_sha1": "cb7bb52adbabf642c7b47c5b8ad677ac05862816",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S26": {
+   "src_sha1": "1e14eed154d83f5b17dbfddd0184fb8038d86bf0",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S27": {
+   "src_sha1": "28c9dade42ae3931f96196a3c15d6c1c827877aa",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S28": {
+   "src_sha1": "32541ce03102a0c45c2e8d07f59a05e73f8f0a39",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S29": {
+   "src_sha1": "635e25611a4db53d8412766399cc2acd3ba0bd38",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S30": {
+   "src_sha1": "9e77be8f6ccea4afd93024b180d5f3c68a4af8f6",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S31": {
+   "src_sha1": "667fbf27db686fb86f54cf4054e99f41ea9bf8be",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S32": {
+   "src_sha1": "fb325ac58a762a28c3691c86616d0aecf70a2381",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S33": {
+   "src_sha1": "20674050e28048074986d5a93cfc5ac5b3ffb506",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S34": {
+   "src_sha1": "192d62507577579acbaa1c0c482da245aca7d0f4",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S35": {
+   "src_sha1": "8f68eabaa61f01610cd6bffa85747948a2498714",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S36": {
+   "src_sha1": "e6a1a15d7beaf896a28409ac54f75fd464acccc4",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S37": {
+   "src_sha1": "8e8fa70c8785f1b1fd089d4de0c639fcfee9d161",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S38": {
+   "src_sha1": "843f71cb5d63fa3318e1d3d9fca0573e29d5b74b",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S39": {
+   "src_sha1": "8f7654d7230d14d80744ebebd70e97ea5c9ba83b",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S40": {
+   "src_sha1": "1de39ad435514ec30e66616ba950ab04f9104225",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S41": {
+   "src_sha1": "397c13e1cfceec0acbd709d2b34807edbfb5a99d",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S42": {
+   "src_sha1": "1ba38ea06cfae9e30e34adee47acb371f9231c00",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S43": {
+   "src_sha1": "f5b0a20cfe7c4195b8ed279b45daf75112bb4391",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S44": {
+   "src_sha1": "7cc406fdbae686e0cad80a86bc26c040debe7352",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S45": {
+   "src_sha1": "a3416bbe2bd43297f14634ca3ac6e9893951057c",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S46": {
+   "src_sha1": "dedcfb516fb8232b90aa255c4fcb54c8a52de57c",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S47": {
+   "src_sha1": "1c9d0cdc9ee80d634ca13d44d591c03941fc70f6",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S48": {
+   "src_sha1": "1714e874f8139d26bac196f0b667af49cd650153",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S49": {
+   "src_sha1": "a46098c3eacaf06ba15161d13ebec7dfc95f318b",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S50": {
+   "src_sha1": "7d359d1ee2cfebc49a71563757551241f68803d5",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S51": {
+   "src_sha1": "9f594f2ecede37ef252040a51c6d943e214b8718",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S52": {
+   "src_sha1": "c994dfd6f3af2be136aba24bf20c4943af585685",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S53": {
+   "src_sha1": "5852391045c0ffb5b9949083aa637ced19e88ce4",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S54": {
+   "src_sha1": "cf1e41006b0bfe315618ef9f2c069da7f0266e93",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S55": {
+   "src_sha1": "7cadb60b582d4d5e5bda267ebf9b6d37f71d7bf1",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S56": {
+   "src_sha1": "36d1cc3523bb82d6ff512682b8118730a7f26a74",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S57": {
+   "src_sha1": "327da06d6ddbc7e7d6c45a4f8a7e204507c5df81",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S58": {
+   "src_sha1": "6c6b152cdde8e411da6a6da07c46efdeb109ef09",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S59": {
+   "src_sha1": "99d13b6f590cfaebea217d0eaf9213ec65ef6e1b",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S60": {
+   "src_sha1": "8a39708d5ed92d0e7e1502623108ee71ec5ede29",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S61": {
+   "src_sha1": "4f23046bfa9403c7c353a6b37c839ec9ddf9e76a",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S62": {
+   "src_sha1": "d94ef481cbe75dd56d47fdf460daa9bb4bcc233c",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S63": {
+   "src_sha1": "55db1f4c27899e890bf3e82bf8cbabd644a7c077",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S64": {
+   "src_sha1": "ca2381a3dfb363f81fc4378156b60d8b54959349",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S65": {
+   "src_sha1": "b1d9b6d59f2997d353d0bd690306bb24f00d564c",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S66": {
+   "src_sha1": "6c3351875b05903cd2da72856efe8d22d983bead",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S67": {
+   "src_sha1": "e40c0fc75e0546bac5d310a4b9fc6c78fbc57c22",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S68": {
+   "src_sha1": "a0046c92162694324921507326389f1a190b4046",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S69": {
+   "src_sha1": "b739007044e752ac6a4ead1dfc049f783cb92229",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S70": {
+   "src_sha1": "ff7d03eaf53653969c1b4faeb98dc787911715d9",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S71": {
+   "src_sha1": "2ea7afb7635563dec9336ec057773f6e003d00c8",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S72": {
+   "src_sha1": "2ea7afb7635563dec9336ec057773f6e003d00c8",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S73": {
+   "src_sha1": "6e4451f5a8e63bf202a19594682f795959409143",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S74": {
+   "src_sha1": "3f314ed84cb9b83d7fe9fac25b32b0782ed0bb13",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S75": {
+   "src_sha1": "ea3c55fcb0d949bd5cf357ef5b2c80c186daf57c",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S76": {
+   "src_sha1": "dd82e668c673fd204fbc24d96d882512370d3457",
+   "state": "untranslated",
+   "ko": ""
+  },
+  "S77": {
+   "src_sha1": "5e02b8a108a9982f9f0bb29045f506a6501af40b",
+   "state": "untranslated",
+   "ko": ""
+  }
+ }
+}
