@@ -24,6 +24,7 @@ def row(s, cells=18):
     return text(("   " + s).ljust(cells)[:cells])
 
 
+UNLOCK = {}             # D-29: tools/unlock.py labels, set by build.py
 MAGIC = "$A5"          # $0102 = $A5, $0103 = $5A: "reopen the menu", $0104 level, $0105 cursor
 MAGIC2 = "$5A"
 
@@ -418,12 +419,15 @@ sloopS:  LDA #$20
          STA $03E5
          LDA #$00
          STA $03E6
-         JMP sel
+         JMP sel0
 dloopD:  LDA #$30
          STA $03E5
          LDA #$01
          STA $03E6
-sel:     JSR scur
+sel0:    JSR SELFIX            ; D-29: never start on a locked entry
+sel:     LDA $03E4
+         STA $011C             ; index before this frame's move (D-29)
+         JSR scur
          JSR $E3E8
          JSR $E378
          LDA $F9
@@ -434,7 +438,7 @@ sel:     JSR scur
          BCC u9
          SBC #$02
          STA $03E4
-u9:      JMP sel
+u9:      JMP schk
 s1:      LDA $F9
          AND #$04              ; down
          BEQ s2
@@ -444,7 +448,7 @@ s1:      LDA $F9
          CMP #$0B
          BCS d9
          STA $03E4
-d9:      JMP sel
+d9:      JMP schk
 s2:      LDA $F9
          AND #$02              ; left
          BEQ s3
@@ -452,7 +456,7 @@ s2:      LDA $F9
          AND #$01
          BEQ l9
          DEC $03E4
-l9:      JMP sel
+l9:      JMP schk
 s3:      LDA $F9
          AND #$01              ; right
          BEQ s4
@@ -463,7 +467,7 @@ s3:      LDA $F9
          CMP #$0A
          BCS r9
          INC $03E4
-r9:      JMP sel
+r9:      JMP schk
 s4:      LDA $F9
          AND #$90              ; A/START: execute
          BEQ s5
@@ -492,6 +496,8 @@ s5:      LDA $F9
          LDA #$0F              ; via the intro: it sets the title's palette and logo banks
          JMP $E073
 s9:      JMP sel
+schk:    JSR SELCHK            ; D-29: locked entries cannot be reached
+         JMP sel
 scur:    LDA #$8B              ; original heart cursor object
          STA $03D6
          LDA $03E4
@@ -519,12 +525,14 @@ slist:   LDA #<slst
          STA $18
          LDA #>slst
          STA $19
-         JMP $E683
+         JSR $E683
+         JMP LOCKS             ; D-29: "?????" over locked entries
 dlist:   LDA #<dlst
          STA $18
          LDA #>dlst
          STA $19
-         JMP $E683
+         JSR $E683
+         JMP LOCKD
 ytab:    .db $60,$78,$90,$A8,$C0,$D8
 stbl:    .db STBL
 dtbl:    .db DTBL
@@ -751,7 +759,10 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     tcode, tl = assemble(TITLE_SRC.replace("LIVES0", "$%04X" % ll["lives0"]), TITLE_ORG, {"sndret": cl["sndret"]})
     if TITLE_ORG + len(tcode) > bank13_free_end + 1:
         raise SystemExit("menus: bank 13 code too large")
-    scode, sl = assemble(SEL_SRC, SEL_ORG)
+    ss = SEL_SRC
+    for k, v in (("SELFIX", "selfix"), ("SELCHK", "selchk"), ("LOCKS", "lockS"), ("LOCKD", "lockD")):
+        ss = ss.replace(k, "$%04X" % UNLOCK[v])
+    scode, sl = assemble(ss, SEL_ORG)
     if SEL_ORG + len(scode) > bank10_free_end:
         raise SystemExit("menus: bank 10 code too large")
     dcode, dl = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC), fixed_free_start)

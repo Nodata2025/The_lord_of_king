@@ -21,6 +21,7 @@ way bank 14 $D030 runs bank 4 enemy code.
 from asm6502 import assemble
 
 B11_ORG, B11_FILE = 0xA000, 0x16000
+UNLOCK = {}                                # set by build.py (tools/unlock.py labels)
 B14_ORG, B14_END = 0xDFD3, 0xE000          # $FF-filled tail of bank 14 (fixed at $C000)
 
 B11_SRC = """
@@ -100,7 +101,8 @@ pl:      STA $0360,X
          BPL pl
 pr:      RTS
 ; ---- 4: once per gameplay frame (before JSR $CFBB) ----
-r_frame: LDA #$00
+r_frame: JSR USTAGE             ; D-29: the round being played unlocks its STAGE entry
+         LDA #$00
          STA $011C
          LDA $011E
          CMP #$02
@@ -213,7 +215,9 @@ def apply(p, orig, fixed_start, fixed_end):
     for name, (off, exp) in SITES.items():
         if orig[off:off + len(exp) // 2] != bytes.fromhex(exp):
             raise SystemExit(f"difficulty: unexpected bytes at {name} (file ${off:05X})")
-    bcode, _ = assemble(B11_SRC, B11_ORG)
+    bcode, _ = assemble(B11_SRC.replace("USTAGE", "$%04X" % UNLOCK["ustage"]), B11_ORG)
+    if B11_ORG + len(bcode) > 0xA200:
+        raise SystemExit("difficulty: bank 11 code reaches the staff hook")
     fcode, fl = assemble(FIXED_SRC, fixed_start)
     kcode, kl = assemble(B14_SRC, B14_ORG, {"far": fl["far"]})
     if fixed_start + len(fcode) > fixed_end:

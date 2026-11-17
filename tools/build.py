@@ -56,7 +56,8 @@ MENU_CELLS = 25                                   # window interior from column 
 
 # D-28 (bank 11 at $A200, mapped with the text engine's bank 10): staff roll S77 ($4D) pace
 STAFF_SRC = """
-staff:   LDA $03D6
+staff:   JSR UDEMO             ; D-29: story cut-scenes unlock their DEMO entry
+         LDA $03D6
          CMP #$4D
          BNE st9
          LDA $03D7
@@ -694,6 +695,14 @@ def main():
     # --- title menu and select screens (tools/menus.py, D-14/D-15)
     import menus
     import difficulty
+    import unlock
+    # D-29 unlocks: bank 11 $A300 (labels used by the select screens, r_frame and the staff hook)
+    ucode, ul = unlock.build(menus.STAGE_ROUND, (5, 19), (7, 19))
+    if orig_p[unlock.FILE:unlock.FILE + len(ucode)] != b"\xff" * len(ucode):
+        raise SystemExit("unlock: bank 11 area not free")
+    p[unlock.FILE:unlock.FILE + len(ucode)] = ucode
+    menus.UNLOCK = ul
+    difficulty.UNLOCK = ul
     menu_report = menus.apply(p, orig_p, FIXED_FREE[0] + len(mcode), FIXED_FREE[1], 0xBFFF, 0x9E00)
     diff_report = difficulty.apply(p, orig_p, menu_report["fixed_next"], FIXED_FREE[1])
     # D-28: story-mode ending = S76 + staff roll S77 + end card, no leaving before the card;
@@ -703,7 +712,9 @@ def main():
             or orig_p[0x16200:0x16240] != b"\xff" * 0x40:
         raise SystemExit("ending/staff roll: unexpected source bytes")
     p[0x7BEE:0x7BF4] = b"\xea" * 6                     # $BBEE: staff roll also without $F6 bit 5
-    scode, _ = assemble(STAFF_SRC, 0xA200)
+    scode, _ = assemble(STAFF_SRC.replace("UDEMO", "$%04X" % ul["udemo"]), 0xA200)
+    if 0xA200 + len(scode) > unlock.ORG:
+        raise SystemExit("staff hook too large")
     p[0x16200:0x16200 + len(scode)] = scode
     ecode, el = assemble(ENDCHK_SRC, 0xBFA2)
     if 0xBFA2 + len(ecode) > 0xC000:
@@ -771,6 +782,7 @@ def main():
         a = 0x800 + 16 * k
         chr_old[a:a + 16] = marker if kana_mode == "marker" else bytes(16)
     header = bytearray(rom[:HEADER]); header[5] = 32
+    header[6] |= 0x02                          # D-29: battery-backed PRG RAM (unlock save)
     out = bytes(header) + bytes(p) + chr_old + bytes(new)
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)

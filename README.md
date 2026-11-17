@@ -28,6 +28,7 @@ STAGE SELECT·SOUND TEST·DEMO SELECT는 원작에 숨어 있던 화면입니다
 - SOUND TEST: ↑↓ 줄 선택(BGM/EFFECT), ←→ 번호, A/START 재생, B/SELECT 바로 메뉴로
 - 본편 엔딩: 「끝」 → 스태프롤 → 감사 화면(그 전엔 나갈 수 없음), 감사 화면에서 A/START → 오프닝
 - DIFFICULTY [NORMAL]: 기본 NORMAL, ← EASY / → HARD
+- STAGE / DEMO SELECT 해금: 처음엔 STAGE 1-1·DEMO 1·2만, 스토리에서 도착한 라운드·본 컷신이 열림. 해금은 자동 저장(에뮬레이터의 배터리 세이브 `.sav`)
 
 | 난이도 | 내용 |
 |---|---|
