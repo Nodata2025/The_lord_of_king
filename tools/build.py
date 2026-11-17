@@ -54,26 +54,7 @@ MENU_CALL_EXPECT = bytes.fromhex("20C280")
 MENU_CELLS = 25                                   # window interior from column 4
 
 MENU_HOOKS = """
-fsetbanks: STA $03
-         TAX
-         AND #$0F
-         STA $B000
-         TXA
-         LSR A
-         LSR A
-         LSR A
-         LSR A
-         STA $B001
-         INX
-         TXA
-         AND #$0F
-         STA $B002
-         TXA
-         LSR A
-         LSR A
-         LSR A
-         LSR A
-         STA $B003
+fsetbanks: STA $03             ; applied by the game's own per-frame copy ($CD04 in the menu loop)
          RTS
 ; bank 14 $CA66 calls this instead of the menu: Korean set in, menu, original banks back
 menuwrap: LDA #MENUBANK
@@ -130,29 +111,11 @@ setfont: LDY $03DA
          PLA                  ; leave the tick without printing
          PLA
          RTS
-; A = 1 KB bank for PPU $0800 (A+1 -> $0C00). Zero page $03 is the game's own
-; per-frame source for these slots (bank 14 $CD67 copies it to $0154-7 every frame);
-; the live registers are written too so the change is immediate.
+; A = 1 KB bank for PPU $0800 (A+1 -> $0C00). Only zero page $03 is changed: the game
+; copies it every frame (bank 14 $CD67 -> $0154-7) and its IRQ applies it at the screen
+; split. Writing $B000-$B003 directly here caused a one-frame glitch in the picture area
+; when it happened mid-frame (found by the kana-marker scan, 2026-11-17).
 setbanks: STA $03
-         TAX
-         AND #$0F
-         STA $B000
-         TXA
-         LSR A
-         LSR A
-         LSR A
-         LSR A
-         STA $B001
-         INX
-         TXA
-         AND #$0F
-         STA $B002
-         TXA
-         LSR A
-         LSR A
-         LSR A
-         LSR A
-         STA $B003
          RTS
 ; ---- glyph source: returns A/Y = queue source pointer ----
 newchar: LDA $03
@@ -176,11 +139,19 @@ legacy:  LDA #$01
          LDA #$DD
          LDY #$03
          RTS
-; ---- {END}: give the original font banks back ----
+; ---- {END}: give the original font banks back, but only when the window was just
+; cleared ({PAGE} right before {END}). Strings that end with text still on screen (S76 "끝",
+; S77 staff roll) keep their Korean set, otherwise the remaining glyphs would turn into
+; other tiles (found by the kana-marker scan).
 endhook: LDA $03
          CMP #FIRST
          BCC endkeep
-         LDA #$02             ; original font banks 2/3 (opening: observed)
+         LDY $03DA
+         DEY
+         LDA ($18),Y          ; byte before {END}
+         CMP #$FB
+         BNE endkeep
+         LDA #$02             ; original font banks 2/3
          JSR setbanks
 endkeep: LDA $03D7
          RTS
@@ -422,6 +393,14 @@ def main():
             new[top + 16 * k: top + 16 * k + 16] = tt
             new[bot + 16 * k: bot + 16 * k + 16] = bt
         # code $BF (k=63) stays blank in both halves
+    # --- original kana tiles ($80-$F7 of CHR banks 2/3) -- D-06: removed in the product.
+    #     LOK_KANA=marker paints a detection pattern instead (verification builds only).
+    kana_mode = os.environ.get("LOK_KANA", "wipe")
+    chr_old = bytearray(chr_old)
+    marker = bytes([0xF0, 0x88, 0x84, 0x82, 0x41, 0x21, 0x11, 0x0F]) * 2   # colour 3
+    for k in range(0x78):
+        a = 0x800 + 16 * k
+        chr_old[a:a + 16] = marker if kana_mode == "marker" else bytes(16)
     header = bytearray(rom[:HEADER]); header[5] = 32
     out = bytes(header) + bytes(p) + chr_old + bytes(new)
 
@@ -433,7 +412,9 @@ def main():
         "sha1": hashlib.sha1(out).hexdigest(),
         "translated_entries": len(ko),
         "untranslated_entries_kept_original": nontr,
-        "distribution": "NOT FOR DISTRIBUTION (development input policy)" if nontr else "candidate",
+        "distribution": ("NOT FOR DISTRIBUTION (development input policy)" if nontr else "candidate")
+                        if os.environ.get("LOK_KANA", "wipe") == "wipe" else "VERIFICATION BUILD (kana marker)",
+        "kana_tiles": os.environ.get("LOK_KANA", "wipe"),
         "font_sets": len(sets),
         "glyphs_per_set": [len(s) for s in sets],
         "text_bytes": used,
