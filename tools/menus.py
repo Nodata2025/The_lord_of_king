@@ -33,7 +33,20 @@ TITLE_ORG = 0xBC40
 TITLE_SRC = """
 ; ---- title menu: called from bank 12 $8718 (was JSR $878A, the hidden-command check) ------
 ; RAM $0100 cursor, $0101 level (0 main, 1 omake); $0102-$0105 reopen request
-tmenu:   LDA #$00
+tmenu:   LDA $011E             ; D-17 difficulty: 0 EASY, 1 NORMAL, 2 HARD; $011F = $011E ^ $5A
+         CMP #$03
+         BCS tdfix
+         EOR #$5A
+         CMP $011F
+         BEQ tdok
+tdfix:   LDA #$01              ; power-on garbage -> NORMAL
+         STA $011E
+         EOR #$5A
+         STA $011F
+tdok:    LDA #$00
+         STA $011A             ; damage remainder, frame counter, extra-move flag
+         STA $011B
+         STA $011C
          STA $0563
          STA $0100
          STA $0101
@@ -79,7 +92,7 @@ tloop:   JSR $E408
          AND #$08              ; up
          BEQ tdown
          DEC $0100
-         BPL tnext
+         BPL tloop
          JSR nitems
          STA $0100
          JMP tnext
@@ -89,22 +102,44 @@ tdown:   LDA $F9
          INC $0100
          JSR nitems
          CMP $0100
-         BCS tnext
+         BCS tloop
          LDA #$00
          STA $0100
          JMP tnext
 tsel:    LDA $F9
+         AND #$03              ; left/right on DIFFICULTY
+         BEQ tsel0
+         LDA $0101
+         BNE tsel0
+         LDA $0100
+         CMP #$03
+         BNE tsel0
+         JMP tdinc             ; left/right/A/START all step EASY -> NORMAL -> HARD
+tsel0:   LDA $F9
          AND #$90              ; A or START: execute
          BEQ tback
          LDA $0101
          BNE tsel1
          LDA $0100
          BEQ tgo
+         CMP #$03
+         BEQ tdinc
          CMP #$01
          BNE topen
          LDA #$20              ; STAGE SELECT
          STA $0563
 tgo:     JMP tleave
+tdinc:   INC $011E
+         LDA $011E
+         CMP #$03
+         BCC tdset
+         LDA #$00
+         STA $011E
+tdset:   LDA $011E
+         EOR #$5A
+         STA $011F
+         JSR drawdif
+         JMP tnext
 topen:   LDA #$01
          STA $0101
          LDA #$00
@@ -148,7 +183,7 @@ nitems:  LDA $0101
          BEQ ni0
          LDA #$01
          RTS
-ni0:     LDA #$02
+ni0:     LDA #$03
          RTS
 drawlvl: LDA $0101
          BNE dlo
@@ -163,6 +198,11 @@ drawlvl: LDA $0101
          LDA #<m2
          LDY #>m2
          LDX #$02
+         JSR qrow
+drawdif: LDX $011E
+         LDA dtlo,X
+         LDY dthi,X
+         LDX #$03
          JMP qrow
 dlo:     LDA #<o0
          LDY #>o0
@@ -175,6 +215,10 @@ dlo:     LDA #<o0
          LDA #<bl
          LDY #>bl
          LDX #$02
+         JSR qrow
+         LDA #<bl
+         LDY #>bl
+         LDX #$03
 qrow:    PHA
          LDA rowlo,X
          STA $18
@@ -197,9 +241,23 @@ tlv:     TXA
          PLA
          TAX
          INX
-         CPX #$03
+         CPX #$04
          BCC tlv
          RTS
+; ---- D-17 lives: game start (bank 12 $8A7A) and continue (bank 12 $8CCB) -----------------
+lives0:  LDA #$02
+         LDY $011E
+         BNE lv2
+         LDA #$09              ; EASY: 9 lives
+lv2:     STA $96
+         RTS
+govr:    LDA $011E
+         CMP #$02
+         BNE lives0
+         LDA #$00              ; HARD: no continue, back to the opening
+         STA $0102
+         LDA #$0F
+         JMP $E073
 ; ---- bank 12 $8709 (was JSR $8770, the hidden-command input recorder) --------------------
 thook:   LDA $0102
          CMP #MAGIC
@@ -290,9 +348,11 @@ sn4:     STA $F9
 snx:     JMP snd
 clrlo:   .db $00,$20,$40,$60,$80,$A0,$C0,$E0,$00,$20
 clrhi:   .db $22,$22,$22,$22,$22,$22,$22,$22,$23,$23
-rowlo:   .db $27,$67,$A7
-rowhi:   .db $22,$22,$22
-cury:    .db $87,$97,$A7
+rowlo:   .db $27,$67,$A7,$EA
+rowhi:   .db $22,$22,$22,$22
+cury:    .db $87,$97,$A7,$B7
+dtlo:    .db <d0,<d1,<d2
+dthi:    .db >d0,>d1,>d2
 spal:    .db 3,1,$16,$27,$30
 m0:      ROW_GAME
 m1:      ROW_STAGE
@@ -300,11 +360,17 @@ m2:      ROW_OMAKE
 o0:      ROW_SOUND
 o1:      ROW_DEMO
 bl:      ROW_BLANK
+d0:      ROW_DEASY
+d1:      ROW_DNORMAL
+d2:      ROW_DHARD
 """
 
 TITLE_SRC = (TITLE_SRC.replace("ROW_GAME", row("GAME START")).replace("ROW_STAGE", row("STAGE SELECT"))
              .replace("ROW_OMAKE", row("OMAKE MODE")).replace("ROW_SOUND", row("SOUND TEST"))
              .replace("ROW_DEMO", row("DEMO SELECT")).replace("ROW_BLANK", row(""))
+             .replace("ROW_DEASY", text("DIFFICULTY  EASY  "))
+             .replace("ROW_DNORMAL", text("DIFFICULTY  NORMAL"))
+             .replace("ROW_DHARD", text("DIFFICULTY  HARD  "))
              .replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC))
 
 # --------------------------------------------------------------------------------------------
@@ -462,6 +528,15 @@ stbl:    .db STBL
 dtbl:    .db DTBL
 SLIST
 DLIST
+; ---- D-17 lives on STAGE SELECT start (bank 10 $912C) ----
+slives:  LDA $011E
+         BNE sl2
+         LDA #$09
+         STA $96
+         RTS
+sl2:     LDA #$02
+         STA $96
+         RTS
 """
 
 _se, _sb = _list("STAGE SELECT", STAGES, 5, 19)
@@ -533,6 +608,9 @@ SITES = {
     "m12_skip":    (0x6000 + 0x00A3, "A9034C73E0"),
     "m12_end":     (0x6000 + 0x02BC, "A9034C73E0"),
     "end_loop":    (0x6000 + 0x182C, "20F8CC"),        # ending loop: JSR $CCF8 -> JSR endchk
+    "lives_init":  (0x18A7A, "A9028596"),       # LDA #2 / STA $96 -> JSR lives0 / NOP (D-17)
+    "lives_cont":  (0x18CCB, "A9028596"),       # continue          -> JSR govr / NOP
+    "lives_stage": (0x1512C, "A9028596"),       # STAGE SELECT      -> JSR slives / NOP
     "snd_slide":   (0x18894, "18A5E6690185E6A5E8690029018"[:0] + "18A5E6690185E6A5E869002901"),
 }
 
@@ -572,6 +650,9 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     put("stage_loop", jmp(sl["sloopS"]))
     put("intro_start", jsr(dl["iskip"]) + b"\xea")
     put("end_loop", jsr(dl["endchk"]))
+    put("lives_init", jsr(tl["lives0"]) + b"\xea")
+    put("lives_cont", jsr(tl["govr"]) + b"\xea")
+    put("lives_stage", jsr(sl["slives"]) + b"\xea")
     # D-16: SOUND TEST appears at once: skip the slide ($E6/$E8 end values) and go on at $88AD
     put("snd_slide", bytes.fromhex("A90085E6A90185E84CAD88") + b"\xea" * 2)
     for name in ("m0F_skip", "m0F_end", "m12_skip", "m12_end"):

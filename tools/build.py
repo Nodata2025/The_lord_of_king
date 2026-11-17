@@ -227,10 +227,10 @@ endhook: LDA $03
 endkeep: LDA $03D7
          RTS
 ; ---- D-11 text speed: 4 frames per byte (was 8). A button: while typing, the rest of the
-; page is drawn at once in blocks of up to 15 cells (one PPU-queue entry per frame, the NMI
+; page is drawn at once in blocks of up to 12 cells (one PPU-queue entry per frame, the NMI
 ; drains one entry per frame); while waiting at {WAIT}, the wait ends.
 ; $03D7 bit $10 = "fast" (free bit: engine uses $80/$40/$20/$01, controllers test bit 6).
-; $0100-$011F = block buffer [w][2][top x w][bottom x w] (never written after reset; checked).
+; $0100-$0119 = block buffer [w][2][top x w][bottom x w] (never written after reset; checked).
 abtn:    LDA $F9               ; new presses, A = bit 7
          BPL abdone
          LDA $03D7
@@ -281,9 +281,9 @@ fglyph:  LDA $30               ; reuse the buffer only after the NMI consumed it
 fl1:     LDA #$1A
 flim:    SEC
          SBC $03DB             ; cells left on this line
-         CMP #$0F
+         CMP #$0C              ; 12 cells: buffer ends at $0119 ($011A-$011F = D-17)
          BCC fl2
-         LDA #$0F
+         LDA #$0C
 fl2:     STA $0100
          LDX #$00
          LDY $03DA
@@ -565,7 +565,9 @@ def main():
 
     # --- title menu and select screens (tools/menus.py, D-14/D-15)
     import menus
+    import difficulty
     menu_report = menus.apply(p, orig_p, FIXED_FREE[0] + len(mcode), FIXED_FREE[1], 0xBFFF, 0x9E00)
+    diff_report = difficulty.apply(p, orig_p, menu_report["fixed_next"], FIXED_FREE[1])
 
     # --- hooks
     code, labels = assemble(HOOKS.replace("FIRST", "$%02X" % FIRST_SET_BANK), CODE_ORG)
@@ -633,6 +635,7 @@ def main():
         "hook_bytes": len(code),
         "menu_hook_bytes": len(mcode),
         "menus": menu_report,
+        "difficulty": diff_report,
         "menu_set": len(sets) - 1,
         "hook_labels": {k: "$%04X" % v for k, v in labels.items()},
     }

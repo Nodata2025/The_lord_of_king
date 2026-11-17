@@ -19,7 +19,7 @@
 
 ## 타이틀 메뉴
 
-타이틀에서 START → GAME START / STAGE SELECT / OMAKE MODE(SOUND TEST, DEMO SELECT).
+타이틀에서 START → GAME START / STAGE SELECT / OMAKE MODE(SOUND TEST, DEMO SELECT) / DIFFICULTY.
 STAGE SELECT·SOUND TEST·DEMO SELECT는 원작에 숨어 있던 화면입니다(이름·모양 유지).
 
 - 공통: 방향키 이동, **A/START 실행**, **B/SELECT 나가기**
@@ -27,6 +27,13 @@ STAGE SELECT·SOUND TEST·DEMO SELECT는 원작에 숨어 있던 화면입니다
 - DEMO SELECT: DEMO 1 ~ 11 (1·2 오프닝, 11 엔딩). 보는 도중 START로 목록에 돌아감
 - SOUND TEST: ↑↓ 줄 선택(BGM/EFFECT), ←→ 번호, A/START 재생
 - 본편 엔딩: 「끝」이 나온 뒤 START → 오프닝
+- DIFFICULTY: ←→ 또는 A/START로 EASY → NORMAL → HARD
+
+| 난이도 | 내용 |
+|---|---|
+| EASY | 받는 피해 ×0.5, 공격력 ×1.5, PW 게이지 항상 가득, 잔기 9, 넉백 없음 |
+| NORMAL | 원작 그대로 |
+| HARD | 보스 체력 ×1.5, 보스 등장 중 적·탄 이동 ×1.2, 받는 피해 ×1.2, 컨티뉴 불가(게임 오버 → 오프닝) |
 
 ## 도구
 
