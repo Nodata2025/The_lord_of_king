@@ -54,6 +54,79 @@ MENU_CALL_FILE = 0x1CA66                          # bank 14 $CA66: JSR $80C2 (me
 MENU_CALL_EXPECT = bytes.fromhex("20C280")
 MENU_CELLS = 25                                   # window interior from column 4
 
+# D-28 (bank 11 at $A200, mapped with the text engine's bank 10): staff roll S77 ($4D) pace
+STAFF_SRC = """
+staff:   LDA $03D6
+         CMP #$4D
+         BNE st9
+         LDA $03D7
+         AND #$60              ; waiting / done?
+         BNE stw
+         LDA $03D7             ; typing: whole page at once (fast mode, D-11)
+         ORA #$10
+         STA $03D7
+         RTS
+stw:     AND #$20
+         BEQ st9
+         LDA $03DC             ; waiting: at most 40 frames
+         CMP #$29
+         BCC st9
+         LDA #$28
+         STA $03DC
+st9:     RTS
+"""
+
+# D-28 (bank 3 $BFA2, ending main loop): replaces the fixed-bank endchk at $B82C
+ENDCHK_SRC = """
+endchk:  JSR $CCF8
+         LDA $F6
+         AND #$20
+         BEQ eg
+         LDA $F9               ; theater: START = back to DEMO SELECT
+         AND #$10
+         BEQ e9
+         LDA #$30
+         JMP $E073
+eg:      LDA $F9               ; story: A/START only once the end card is up
+         AND #$90
+         BEQ e9
+         LDA $03D6
+         CMP #$4D
+         BNE e9
+         LDA $03D7
+         AND #$40
+         BEQ e9
+         LDY #$04              ; fade out: 4 steps of -$10 on every palette entry
+fo1:     LDX #$1F
+fo2:     LDA $0120,X
+         SEC
+         SBC #$10
+         BCS fo3
+         LDA #$0F
+fo3:     STA $0120,X
+         DEX
+         BPL fo2
+         JSR $E40F             ; BG palette next NMI, sprite palette the one after
+         JSR $E416
+         TYA
+         PHA
+         LDX #$06
+fw:      TXA
+         PHA
+         JSR $E378
+         PLA
+         TAX
+         DEX
+         BNE fw
+         PLA
+         TAY
+         DEY
+         BNE fo1
+         LDA #$0F              ; -> opening
+         JMP $E073
+e9:      RTS
+"""
+
 MENU_HOOKS = """
 fsetbanks: STA $03             ; applied by the game's own per-frame copy ($CD04 in the menu loop)
          RTS
@@ -262,7 +335,8 @@ endkeep: LDA $03D7
 ; drains one entry per frame); while waiting at {WAIT}, the wait ends.
 ; $03D7 bit $10 = "fast" (free bit: engine uses $80/$40/$20/$01, controllers test bit 6).
 ; $0100-$0119 = block buffer [w][2][top x w][bottom x w] (never written after reset; checked).
-abtn:    LDA $F9               ; new presses, A = bit 7
+abtn:    JSR $A200             ; D-28 staff roll pace (bank 11, tools/build.py STAFF_SRC)
+         LDA $F9               ; new presses, A = bit 7
          BPL abdone
          LDA $03D7
          AND #$20
@@ -619,6 +693,19 @@ def main():
     import difficulty
     menu_report = menus.apply(p, orig_p, FIXED_FREE[0] + len(mcode), FIXED_FREE[1], 0xBFFF, 0x9E00)
     diff_report = difficulty.apply(p, orig_p, menu_report["fixed_next"], FIXED_FREE[1])
+    # D-28: story-mode ending = S76 + staff roll S77 + end card, no leaving before the card;
+    # the staff roll pages are drawn at once and wait 40 frames; on the card A/START fades out
+    # to the opening. Theater (DEMO 11) keeps START = back to DEMO SELECT at any time.
+    if orig_p[0x7BEE:0x7BF4] != bytes.fromhex("A5F62920F00C") or orig_p[0x7FA2:0x8000] != b"\xff" * 0x5E \
+            or orig_p[0x16200:0x16240] != b"\xff" * 0x40:
+        raise SystemExit("ending/staff roll: unexpected source bytes")
+    p[0x7BEE:0x7BF4] = b"\xea" * 6                     # $BBEE: staff roll also without $F6 bit 5
+    scode, _ = assemble(STAFF_SRC, 0xA200)
+    p[0x16200:0x16200 + len(scode)] = scode
+    ecode, el = assemble(ENDCHK_SRC, 0xBFA2)
+    if 0xBFA2 + len(ecode) > 0xC000:
+        raise SystemExit("ending: endchk too large")
+    p[0x7FA2:0x7FA2 + len(ecode)] = ecode
     # D-20: ending start (bank 3 $B86F) queued the princess palette before the picture CHR bank
     # ($00 = $74) reached the shadow registers, so one frame showed the font tiles. Set the bank and
     # copy it ($CD04) first, then start the palette fade. Code in bank 3's $FF tail at $BF96.

@@ -26,7 +26,7 @@ STAGE SELECT·SOUND TEST·DEMO SELECT는 원작에 숨어 있던 화면입니다
 - STAGE SELECT: STAGE 1-1 ~ 6-2
 - DEMO SELECT: DEMO 1 ~ 11 (1·2 오프닝, 11 엔딩). 보는 도중 START로 목록에 돌아감
 - SOUND TEST: ↑↓ 줄 선택(BGM/EFFECT), ←→ 번호, A/START 재생, B/SELECT 바로 메뉴로
-- 본편 엔딩: 「끝」이 나온 뒤 START → 오프닝
+- 본편 엔딩: 「끝」 → 스태프롤 → 감사 화면(그 전엔 나갈 수 없음), 감사 화면에서 A/START → 오프닝
 - DIFFICULTY [NORMAL]: 기본 NORMAL, ← EASY / → HARD
 
 | 난이도 | 내용 |

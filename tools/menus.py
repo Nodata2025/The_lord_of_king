@@ -776,7 +776,7 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     put("stage_list", jsr(sl["slist"]))
     put("stage_loop", jmp(sl["sloopS"]))
     put("intro_start", jsr(dl["iskip"]) + b"\xea")
-    put("end_loop", jsr(dl["endchk"]))
+    put("end_loop", bytes.fromhex("20A2BF"))      # D-28: endchk moved to bank 3 $BFA2 (build.py)
     put("lives_init", jsr(ll["lives0"]) + b"\xea")
     p[CREDIT_FILE:CREDIT_FILE + len(ccode)] = ccode
     fcode, fl = assemble(FASTFD_SRC.replace("REOPEN", "$%04X" % cl["reopen"]), FASTFD_ORG)
