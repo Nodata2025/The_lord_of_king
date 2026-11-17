@@ -44,9 +44,7 @@ tdfix:   LDA #$01              ; power-on garbage -> NORMAL
          EOR #$5A
          STA $011F
 tdok:    LDA #$00
-         STA $011A             ; damage remainder, frame counter, extra-move flag
-         STA $011B
-         STA $011C
+         STA $011A             ; damage remainder ($011B/$011C are rewritten every gameplay frame)
          STA $0563
          STA $0100
          STA $0101
@@ -322,8 +320,6 @@ sn2:     LDA $F9
          BEQ sn3
          JSR $E4EA
          JSR $E4F9
-         LDA #$F0
-         STA $0200
          LDA #MAGIC
          STA $0102
          LDA #MAGIC2
@@ -332,8 +328,12 @@ sn2:     LDA $F9
          STA $0104
          LDA #$00
          STA $0105
-         LDA #$0F              ; via the intro (see select screens)
-         JMP $E073
+         STA $E6               ; D-19: back to the title nametable directly (no mode change),
+         STA $E8               ;       the menu reopens at SOUND TEST via the request above
+         LDA #$F0
+         STA $0200
+         JSR $E408             ; push the hidden cursor to OAM now
+         JMP $8718
 sn3:     LDA $F9
          AND #$03              ; left/right: change the number on this row
          BEQ snx
