@@ -102,7 +102,8 @@ tln:     LDA $30               ; rows still waiting in the PPU queue: not shown 
 tlm:     LDA $F9
          AND #$6F
          STA $F9
-tl0:
+tl0:     LDY #$06              ; D-30 developer command (bank 11 via far)
+         JSR FAR
          LDA $F9
          AND #$08              ; up
          BEQ tdown
@@ -311,9 +312,7 @@ sn1:     LDA $F9
          BNE sfx
          JSR $88E4             ; original "play BGM $0300"
          JMP snd
-sfx:     LDX $0301             ; original "play effect $0301+1"
-         INX
-         STX $C1
+sfx:     JSR $88F7             ; original "play effect $0301+1" (tail of $88F3)
          JMP snd
 sn2:     LDA $F9
          AND #$60              ; B/SELECT: stop and go back to OMAKE MODE
@@ -756,9 +755,12 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     if len(lcode) > 12 or orig[LIVES0_FILE:LIVES0_FILE + 12] != bytes.fromhex("85E8200 8E42078E3A5E8F0E7".replace(" ", "")):
         raise SystemExit("menus: lives0 area")
     p[LIVES0_FILE:LIVES0_FILE + len(lcode)] = lcode
-    tcode, tl = assemble(TITLE_SRC.replace("LIVES0", "$%04X" % ll["lives0"]), TITLE_ORG, {"sndret": cl["sndret"]})
+    dcode0, _ = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC), fixed_free_start)
+    far = fixed_free_start + len(dcode0)        # difficulty.FIXED_SRC starts with far
+    tcode, tl = assemble(TITLE_SRC.replace("LIVES0", "$%04X" % ll["lives0"]).replace("FAR", "$%04X" % far),
+                         TITLE_ORG, {"sndret": cl["sndret"]})
     if TITLE_ORG + len(tcode) > bank13_free_end + 1:
-        raise SystemExit("menus: bank 13 code too large")
+        raise SystemExit("menus: bank 13 code too large by %d" % (TITLE_ORG + len(tcode) - bank13_free_end - 1))
     ss = SEL_SRC
     for k, v in (("SELFIX", "selfix"), ("SELCHK", "selchk"), ("LOCKS", "lockS"), ("LOCKD", "lockD")):
         ss = ss.replace(k, "$%04X" % UNLOCK[v])

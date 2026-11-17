@@ -187,6 +187,50 @@ lk2:     INX
          CPX #$0B
          BCC lk1
          RTS
+; ---- D-30 developer command: on the main menu with the cursor on GAME START,
+; up up down down left right left right x2 -> everything unlocked, effect 04 ($C1 = 5)
+cheat:   LDA $0101
+         BNE ch0
+         LDA $F9
+         AND #$0F
+         BEQ ch9
+         LDX $0109
+         CPX #$10
+         BCC ch1
+         LDX #$00
+ch1:     CPX #$00
+         BNE ch2
+         LDY $0100             ; the first key only with the cursor on GAME START
+         BNE ch0
+ch2:     CMP kseq,X
+         BNE chm
+         INX
+         STX $0109
+         CPX #$10
+         BNE ch9
+         JSR srchk
+         LDA #$FF
+         STA $6002
+         STA $6004
+         LDA #$07
+         STA $6003
+         STA $6005
+         JSR srsum
+         STA $6006
+         LDA #$05
+         STA $C1
+ch0:     LDA #$00
+         STA $0109
+ch9:     RTS
+chm:     LDX #$00              ; wrong key: it may start the sequence again
+         LDY $0100
+         BNE chz
+         CMP kseq
+         BNE chz
+         INX
+chz:     STX $0109
+         RTS
+kseq:    .db $08,$08,$04,$04,$02,$01,$02,$01,$08,$08,$04,$04,$02,$01,$02,$01
 bits:    .db $01,$02,$04,$08,$10,$20,$40,$80
 srnd:    {db(stage_round)}
 dfirst:  {db(DEMO_FIRST)}

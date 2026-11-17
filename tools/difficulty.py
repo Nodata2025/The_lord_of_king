@@ -31,8 +31,8 @@ disp:    LDA dhi,Y
          PHA
          LDA $011D
          RTS
-dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1
-dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1
+dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1,<ucheat-1
+dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1,>ucheat-1
 ; ---- 0: damage taken (was $C52D: A = attack id) ----
 r_dmg:   AND #$3F
          TAY
@@ -215,7 +215,8 @@ def apply(p, orig, fixed_start, fixed_end):
     for name, (off, exp) in SITES.items():
         if orig[off:off + len(exp) // 2] != bytes.fromhex(exp):
             raise SystemExit(f"difficulty: unexpected bytes at {name} (file ${off:05X})")
-    bcode, _ = assemble(B11_SRC.replace("USTAGE", "$%04X" % UNLOCK["ustage"]), B11_ORG)
+    bcode, _ = assemble(B11_SRC.replace("USTAGE", "$%04X" % UNLOCK["ustage"]).replace("CHEAT", "$%04X" % UNLOCK["cheat"]), B11_ORG,
+                        {"ucheat": UNLOCK["cheat"]})
     if B11_ORG + len(bcode) > 0xA200:
         raise SystemExit("difficulty: bank 11 code reaches the staff hook")
     fcode, fl = assemble(FIXED_SRC, fixed_start)
