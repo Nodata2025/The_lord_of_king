@@ -76,6 +76,17 @@ stw:     AND #$20
          STA $03DC
 st9:     RTS
 """
+# D-35 {INSTANT} = $F7 at a page start: the page is drawn at once (fast mode), so a silent
+# "……" line does not keep the speaker's mouth animation running while it types.
+INST_SRC = """
+inst:    INC $03DA
+         LDA $03D7
+         ORA #$10
+         STA $03D7
+         PLA                   ; leave the tick without printing (like {NAME})
+         PLA
+         RTS
+"""
 
 # D-28 (bank 3 $BFA2, ending main loop): replaces the fixed-bank endchk at $B82C
 ENDCHK_SRC = """
@@ -181,7 +192,7 @@ HUD_SITES = {                  # bank 14 file offset: expected original bytes
 }
 
 WAIT_FRAMES = 60   # D-18 (original $80 = 128 frames, about 2.1 s)
-CTRL = {"{PAGE}": 0xFB, "{WAIT}": 0xFC, "{BR}": 0xFD, "{END}": 0xFE}
+CTRL = {"{PAGE}": 0xFB, "{WAIT}": 0xFC, "{BR}": 0xFD, "{END}": 0xFE, "{INSTANT}": 0xF7}   # F7: D-35
 
 # Expected original bytes at each patch site (CPU address in bank 10).
 PATCHES_EXPECT = {
@@ -205,7 +216,10 @@ pre:     LDA $03DF
          BEQ name
          CMP #$F8
          BEQ raw21
-         RTS
+         CMP #$F7
+         BNE pr9
+         JMP $A2E0             ; D-35 {INSTANT} (bank 11, STAFF_SRC inst)
+pr9:     RTS
 ; {NAME} = $F9 n c1..cn: speaker tag drawn at PPU $22C3 (rows 22-23) as one 1x2-cell block
 ; through the $0100 buffer. Waits (retries next tick) until the PPU queue is empty.
 name:    LDA $30
@@ -362,7 +376,7 @@ tick:    INC $B0
 tdone:   RTS
 fast:    JSR $8053             ; $18/$19 = string, $03DF = next byte
          LDA $03DF
-         CMP #$F8
+         CMP #$F7
          BCC fglyph
          CMP #$FD
          BNE fctl
@@ -394,7 +408,7 @@ fl2:     STA $0100
          LDX #$00
          LDY $03DA
 floop:   LDA ($18),Y
-         CMP #$F8
+         CMP #$F7
          BCS fend
          STA $0102,X           ; top row
          INY
@@ -715,6 +729,10 @@ def main():
     if 0xA200 + len(scode) > unlock.ORG:
         raise SystemExit("staff hook too large")
     p[0x16200:0x16200 + len(scode)] = scode
+    icode, _ = assemble(INST_SRC, 0xA2E0)
+    if 0xA200 + len(scode) > 0xA2E0 or orig_p[0x162E0:0x162E0 + len(icode)] != b"\xff" * len(icode):
+        raise SystemExit("inst: bank 11 $A2E0 not free")
+    p[0x162E0:0x162E0 + len(icode)] = icode
     ecode, el = assemble(ENDCHK_SRC, 0xBFA2)
     if 0xBFA2 + len(ecode) > 0xC000:
         raise SystemExit("ending: endchk too large")

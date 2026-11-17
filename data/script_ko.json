@@ -75,7 +75,7 @@
   "S14": {
    "src_sha1": "fd8b99efa6b684161f468c3eee1b0c0c89d1d529",
    "state": "needs_review",
-   "ko": "「…………」{WAIT}{PAGE}{END}"
+   "ko": "{INSTANT}「…………」{WAIT}{PAGE}{END}"
   },
   "S15": {
    "src_sha1": "4d8c63eb12b6d79e5b6739a43232a79c6986a41d",
@@ -110,7 +110,7 @@
   "S21": {
    "src_sha1": "3aa6b75e73b065fafb9ab6485fca96be2c777c0e",
    "state": "needs_review",
-   "ko": "헉…….{WAIT}{PAGE}{END}"
+   "ko": "분부대로…….{WAIT}{PAGE}{END}"
   },
   "S22": {
    "src_sha1": "74615ebced94c61a71ca5285454e55a9a0c61423",
@@ -125,12 +125,12 @@
   "S24": {
    "src_sha1": "323ba97e40f7b053fd7e6ecbf41fab8b5c74f713",
    "state": "needs_review",
-   "ko": "빨리 원래 세계로 돌아가고 싶어?{WAIT}{PAGE}그렇지……. 근데 왜?{WAIT}{PAGE}음…….{WAIT}{PAGE}{END}"
+   "ko": "빨리 원래 세계로 돌아가고 싶어……?{WAIT}{PAGE}그렇지……. 근데 왜?{WAIT}{PAGE}음…….{WAIT}{PAGE}{END}"
   },
   "S25": {
    "src_sha1": "cb7bb52adbabf642c7b47c5b8ad677ac05862816",
    "state": "needs_review",
-   "ko": "그냥…… 왠지.{WAIT}{PAGE}테레네아는 머니까 말야…….{WAIT}{PAGE}{END}"
+   "ko": "아니, 그냥…….{WAIT}{PAGE}테레네아는 머니까 말야…….{WAIT}{PAGE}{END}"
   },
   "S26": {
    "src_sha1": "1e14eed154d83f5b17dbfddd0184fb8038d86bf0",
@@ -155,7 +155,7 @@
   "S30": {
    "src_sha1": "9e77be8f6ccea4afd93024b180d5f3c68a4af8f6",
    "state": "needs_review",
-   "ko": "놈들은 이미 우리 손안에 있다.{BR}하―핫핫핫.{WAIT}{PAGE}{END}"
+   "ko": "놈들은 이미 독 안에 든 쥐다!{BR}하―핫핫핫.{WAIT}{PAGE}{END}"
   },
   "S31": {
    "src_sha1": "667fbf27db686fb86f54cf4054e99f41ea9bf8be",
@@ -180,7 +180,7 @@
   "S35": {
    "src_sha1": "8f68eabaa61f01610cd6bffa85747948a2498714",
    "state": "needs_review",
-   "ko": "표식에 주의하세요.{BR}그러면,……여기에…….{WAIT}{PAGE}{END}"
+   "ko": "표식에 주의하세요.{BR}안 그러면,……여기에…….{WAIT}{PAGE}{END}"
   },
   "S36": {
    "src_sha1": "e6a1a15d7beaf896a28409ac54f75fd464acccc4",
@@ -220,7 +220,7 @@
   "S43": {
    "src_sha1": "f5b0a20cfe7c4195b8ed279b45daf75112bb4391",
    "state": "needs_review",
-   "ko": "기운이 넘치는군…….{BR}그런 말은 나를 쓰러뜨리고 나서 해라.{WAIT}{PAGE}{END}"
+   "ko": "기운이 넘치는군…….{BR}그런 말은 나를 쓰러뜨리고 나서 하거라.{WAIT}{PAGE}{END}"
   },
   "S44": {
    "src_sha1": "7cc406fdbae686e0cad80a86bc26c040debe7352",
@@ -230,7 +230,7 @@
   "S45": {
    "src_sha1": "a3416bbe2bd43297f14634ca3ac6e9893951057c",
    "state": "needs_review",
-   "ko": "으……!{WAIT}{PAGE}{END}"
+   "ko": "으윽……!?{WAIT}{PAGE}{END}"
   },
   "S46": {
    "src_sha1": "dedcfb516fb8232b90aa255c4fcb54c8a52de57c",
@@ -255,7 +255,7 @@
   "S50": {
    "src_sha1": "7d359d1ee2cfebc49a71563757551241f68803d5",
    "state": "needs_review",
-   "ko": "로슈, 이 세계에 억지로 불러서,{BR} 미안해.{WAIT}{PAGE}큐티, 그만둬.{WAIT}{PAGE}당신에겐 공주님을 구해{BR} 줘야 하니까…….{WAIT}{PAGE}하지만, 너는…….{WAIT}{PAGE}나는 괜찮아.{WAIT}{PAGE}{END}"
+   "ko": "로슈, 이 세계에 억지로 불러서,{BR} 미안해.{WAIT}{PAGE}큐티, 그만둬!{WAIT}{PAGE}당신에겐 공주님을 구해야 할 사명이{BR} 있으니까…….{WAIT}{PAGE}하지만, 그렇게 되면 너는……!{WAIT}{PAGE}나는 괜찮아.{WAIT}{PAGE}{END}"
   },
   "S51": {
    "src_sha1": "9f594f2ecede37ef252040a51c6d943e214b8718",
@@ -270,17 +270,17 @@
   "S53": {
    "src_sha1": "5852391045c0ffb5b9949083aa637ced19e88ce4",
    "state": "needs_review",
-   "ko": "아앗……!{WAIT}{PAGE}{END}"
+   "ko": "으아아……!{WAIT}{PAGE}{END}"
   },
   "S54": {
    "src_sha1": "cf1e41006b0bfe315618ef9f2c069da7f0266e93",
    "state": "needs_review",
-   "ko": "……큐티!!{WAIT}{PAGE}{END}"
+   "ko": "……큐티!!!{WAIT}{PAGE}{END}"
   },
   "S55": {
    "src_sha1": "7cadb60b582d4d5e5bda267ebf9b6d37f71d7bf1",
    "state": "needs_review",
-   "ko": "젠장!!{BR}맥마흔 녀석!!{WAIT}{PAGE}{END}"
+   "ko": "제기랄!!{BR}용서 않겠다 맥마흔!!{WAIT}{PAGE}{END}"
   },
   "S56": {
    "src_sha1": "36d1cc3523bb82d6ff512682b8118730a7f26a74",
@@ -325,7 +325,7 @@
   "S64": {
    "src_sha1": "ca2381a3dfb363f81fc4378156b60d8b54959349",
    "state": "needs_review",
-   "ko": "「……………」{WAIT}{PAGE}돌려보내 주지 않겠어?{BR} 원래 세계로.{WAIT}{PAGE}이제 더 이상 여기 있는 건, 괴롭거든.{WAIT}{PAGE}{END}"
+   "ko": "{INSTANT}「……………」{WAIT}{PAGE}돌려보내 주지 않겠어?{BR} 원래 세계로.{WAIT}{PAGE}이제 더 이상 여기 있는 건, 괴롭거든.{WAIT}{PAGE}{END}"
   },
   "S65": {
    "src_sha1": "b1d9b6d59f2997d353d0bd690306bb24f00d564c",
