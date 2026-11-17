@@ -391,6 +391,12 @@
    "src_sha1": "5e02b8a108a9982f9f0bb29045f506a6501af40b",
    "state": "needs_review",
    "ko": "{WAIT}{WAIT}{WAIT}{PAGE}    스태프{WAIT}{PAGE}기획 & 데모 콘티{BR}    가와노 가즈히로{WAIT}{PAGE}그래픽 아티스트{BR}    가토 도모코{WAIT}{PAGE}그래픽 아티스트{BR}    고미야마 게이타{WAIT}{PAGE}스크린 애니메이션{BR}    가토 도모코{WAIT}{PAGE}스크린 애니메이션{BR}    가와노 가즈히로{WAIT}{PAGE}사운드 컴포저{BR}    셀린 다자키{WAIT}{PAGE}프로그램{BR}    나, 나라구요~{WAIT}{PAGE}{THEEND}{ENDCARD1}{BR}{ENDCARD2}{END}"
+  },
+  "S78": {
+   "extra": true,
+   "state": "needs_review",
+   "note": "D-37: post-ending scene (story only), no source text",
+   "ko": "혹시나 나중에 세이브 파일을 잃어버리거나{BR}새로 시작하거든{WAIT}{PAGE}GAME START에 커서를 두고{BR}↑↑↓↓←→←→↑↑↓↓←→←→를 입력해봐{WAIT}{PAGE}그러면 좋은 일이 있을지도? Bye~{WAIT}{PAGE}{END}"
   }
  },
  "menu": {
@@ -710,6 +716,11 @@
    null,
    null,
    null
+  ],
+  "S78": [
+   "큐티",
+   "큐티",
+   "큐티"
   ]
  },
  "speaker_notes": {

@@ -94,7 +94,7 @@ endchk:  JSR $CCF8
          LDA $F9
          AND #$90              ; A or START?
          BEQ e9
-         LDX #$0F              ; story: A/START once the end card is up -> opening
+         LDX #$0F              ; story: A/START once the end card is up -> Cutie (D-37)
          LDA $F6
          AND #$20
          BEQ ecard
@@ -107,36 +107,44 @@ ecard:   LDA $03D6
          BNE e9
          BIT $03D7             ; bit 6 = finished
          BVC e9
-         BVS fade
+         CPX #$30
+         BEQ fade
+         LDY #$09              ; D-37: fade out, silence, clear, Cutie's picture queued, S78
+         JMP FAR               ; selected but not running yet (bank 11 r_post)
 fadeq:   LDA $0103             ; D-32 (from dret): no fade when passing through the intro on the
          CMP #$5A              ;       way back from a select screen ($0103 = $5A only then)
          BNE fade
          TXA
          JMP $E073
-fade:    TXA                   ; target mode
-         PHA
-         LDY #$04              ; fade out: 4 steps of -$10 on every palette entry
-fo1:     LDX #$1F
-fo2:     LDA $0120,X
-         SEC
-         SBC #$10
-         BCS fo3
-         LDA #$0F
-fo3:     STA $0120,X
-         DEX
-         BPL fo2
-         LDA $DD               ; BG palette next NMI, sprite palette the one after ($E40F/$E416)
-         ORA #$30
-         STA $DD
-         LDX #$06
-fw:      JSR $E378             ; one frame (keeps A/X/Y)
-         DEX
-         BNE fw
-         DEY
-         BNE fo1
-         PLA
-         JMP $E073
+fade:    TXA                   ; target mode: fade out, then $E073 (bank 11 far 8, D-37)
+         LDY #$08
+         JMP FAR
+; ---- S78 running (ending step 18 at $BBEE, STEP18_SRC, comes here) ----
+poststep: BIT $03D7
+         BVS pdone
+         BMI prun
+         LDA $055B             ; picture still being drawn
+         BNE e9
+         LDY #$0A              ; fade in, then her lines start (bank 11 r_fin)
+         JMP FAR
+prun:    LDX #$00              ; Cutie's mouth, as the opening's S11 page
+         JMP $A2C1
+pdone:   LDX #$0F              ; S78 done: fade out -> opening
+         BNE fade
 e9:      RTS
+"""
+
+# ending step 18 ($BBEE-$BC00, 19 bytes): S77 = staff roll + card (D-28: no $F6 bit 5 check),
+# in story mode S78 after it (D-37, started by endchk)
+STEP18_SRC = """
+         LDA $03D6
+         CMP #POSTSTR
+         BNE s77
+         JMP POSTSTEP
+s77:     CMP #$4D
+         BEQ $BB85             ; an RTS (end of step 15)
+         LDA #$4D
+         JMP $9C5B
 """
 
 MENU_HOOKS = """
@@ -541,6 +549,12 @@ def main():
     ko = {}
     for sid, e in script.items():
         i = int(sid[1:])
+        if e.get("extra"):              # D-37: new string after the source ones (no source text)
+            if i < PTR_COUNT:
+                raise SystemExit(f"{sid}: extra entries must come after S{PTR_COUNT - 1:02d}")
+            check_layout(sid, e["ko"])
+            ko[i] = e["ko"]
+            continue
         if hashlib.sha1(src[i]).hexdigest() != e["src_sha1"]:
             raise SystemExit(f"{sid}: source hash mismatch (stale translation baseline)")
         if e.get("ko"):
@@ -600,8 +614,11 @@ def main():
         raise SystemExit("menu glyphs exceed one set")
 
 
+    n_str = max(ko) + 1                 # D-37: extra strings extend the pointer table
+    if sorted(k for k in ko if k >= PTR_COUNT) != list(range(PTR_COUNT, n_str)):
+        raise SystemExit("extra strings must be numbered without gaps")
     blobs = []
-    for i in range(PTR_COUNT):
+    for i in range(n_str):
         if i not in ko:
             blobs.append(bytes(src[i])); continue
         out, cur = bytearray(), None
@@ -632,15 +649,18 @@ def main():
     # patch, so no source text is distributed). Translated entries go to the spill area.
     # When everything is translated, the whole script is repacked into the original region
     # first, then the spill area.
-    ptrs = [0] * PTR_COUNT
+    ptrs = [0] * n_str
     t = cpu2file(PTR_TABLE)
     orig_ptrs = [p[t + 2 * k] | p[t + 2 * k + 1] << 8 for k in range(PTR_COUNT)]
-    if len(ko) == PTR_COUNT:
-        regions = [[TEXT_START, TEXT_END], [SPILL_START, SPILL_END]]
+    if all(k in ko for k in range(PTR_COUNT)):
+        # the table grows into the old start of string 0 (repacked anyway)
+        regions = [[TEXT_START + 2 * (n_str - PTR_COUNT), TEXT_END], [SPILL_START, SPILL_END]]
         a0, a1 = cpu2file(TEXT_START), cpu2file(TEXT_END)
         p[a0:a1] = b"\xff" * (a1 - a0)
-        order = range(PTR_COUNT)
+        order = range(n_str)
     else:
+        if n_str > PTR_COUNT:
+            raise SystemExit("extra strings need the full translation (table grows into string 0)")
         regions = [[SPILL_START, SPILL_END]]
         order = sorted(ko)
         for k in range(PTR_COUNT):
@@ -713,7 +733,9 @@ def main():
         raise SystemExit("unlock: bank 11 area not free")
     p[unlock.FILE:unlock.FILE + len(ucode)] = ucode
     menus.UNLOCK = ul
-    _, el0 = assemble(ENDCHK_SRC, 0xBFA2)
+    import post
+    post.set_palette(orig_p)
+    _, el0 = assemble(ENDCHK_SRC.replace("FAR", "$E000").replace("POSTSTR", "$%02X" % post.STRING), 0xBFA2)
     menus.FADE = el0["fadeq"]
     difficulty.UNLOCK = ul
     menu_report = menus.apply(p, orig_p, FIXED_FREE[0] + len(mcode), FIXED_FREE[1], 0xBFFF, 0x9E00)
@@ -724,7 +746,8 @@ def main():
     if orig_p[0x7BEE:0x7BF4] != bytes.fromhex("A5F62920F00C") or orig_p[0x7FA2:0x8000] != b"\xff" * 0x5E \
             or orig_p[0x16200:0x16240] != b"\xff" * 0x40:
         raise SystemExit("ending/staff roll: unexpected source bytes")
-    p[0x7BEE:0x7BF4] = b"\xea" * 6                     # $BBEE: staff roll also without $F6 bit 5
+    if orig_p[0x7BF4:0x7C01] != bytes.fromhex("ADD603C94DF005A94D4C5B9C60"):
+        raise SystemExit("ending step 18: unexpected source bytes")
     scode, _ = assemble(STAFF_SRC.replace("UDEMO", "$%04X" % ul["udemo"]), 0xA200)
     if 0xA200 + len(scode) > unlock.ORG:
         raise SystemExit("staff hook too large")
@@ -733,7 +756,14 @@ def main():
     if 0xA200 + len(scode) > 0xA2E0 or orig_p[0x162E0:0x162E0 + len(icode)] != b"\xff" * len(icode):
         raise SystemExit("inst: bank 11 $A2E0 not free")
     p[0x162E0:0x162E0 + len(icode)] = icode
-    ecode, el = assemble(ENDCHK_SRC, 0xBFA2)
+    ecode, el = assemble(ENDCHK_SRC.replace("FAR", "$%04X" % diff_report["far"])
+                         .replace("POSTSTR", "$%02X" % post.STRING), 0xBFA2)
+    # $BBEE (step 18): staff roll also without $F6 bit 5 (D-28), S78 after it (D-37)
+    s18, _ = assemble(STEP18_SRC.replace("POSTSTR", "$%02X" % post.STRING)
+                      .replace("POSTSTEP", "$%04X" % el["poststep"]), 0xBBEE)
+    if len(s18) > 0x13 or orig_p[0x7B85] != 0x60:
+        raise SystemExit("ending step 18 does not fit")
+    p[0x7BEE:0x7BEE + len(s18)] = s18
     if 0xBFA2 + len(ecode) > 0xC000:
         raise SystemExit("ending: endchk too large")
     p[0x7FA2:0x7FA2 + len(ecode)] = ecode
@@ -840,7 +870,7 @@ def main():
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     open(out_path, "wb").write(out)
-    nontr = PTR_COUNT - len(ko)
+    nontr = PTR_COUNT - len([k for k in ko if k < PTR_COUNT])
     report = {
         "output": os.path.basename(out_path),
         "sha1": hashlib.sha1(out).hexdigest(),

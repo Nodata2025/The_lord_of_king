@@ -2,11 +2,11 @@
 
 | 파일 | 적용 후 롬 SHA-1 | IPS SHA-1 |
 |---|---|---|
-| `LordOfKing_KR_v0.13.8-dev.ips` | `c30268f8b078ad18e9f686318b0ae776928b0f9a` | `929c7d076bdf24846205c37a2bbf1565e852d256` |
+| `LordOfKing_KR_v0.13.9-dev.ips` | `9a5d49c38a5d97f084063f7a3d74c89acb75bc00` | `751f352c0f9bccf5d20a68e8f9403b9bfe81c905` |
 
 - 적용 대상: 일본판 iNES 롬 「The Lord of King」, SHA-1 `b1cad2d3e38ccd7780437d2c83effa254576861b` (262,160바이트)
 - 적용하면 CHR-ROM이 256KB로 늘어납니다(393,232바이트).
-- 번역 상태: needs_review 81
+- 번역 상태: needs_review 82
 - `-dev` 버전은 검수 전 개발용입니다. 변경 내용은 [CHANGELOG.md](../CHANGELOG.md).
 - 패치에는 원본 롬의 텍스트나 그래픽이 들어 있지 않습니다(`tools/check_patch.py`로 검사).
 - 한글 글꼴: Galmuri11 Condensed © quiple, SIL Open Font License 1.1.
