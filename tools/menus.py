@@ -573,26 +573,23 @@ isk1:    LDA $F9
 ; ending main loop (bank 3 $B82C, was JSR $CCF8): START leaves the ending.
 ; From DEMO SELECT: any time -> DEMO SELECT. In the game the ending stops at S76 "끝" (the
 ; staff roll S77 only follows in DEMO 11): once S76 or S77 has finished -> the opening ($0F).
-endchk:  JSR $CCF8
-         LDA $F9
-         AND #$10
-         BEQ ec9
-         LDA $F6
-         AND #$20
-         BNE ecth
-         LDA $03D6
-         CMP #$4C              ; S76
-         BEQ ec1
-         CMP #$4D              ; S77
-         BNE ec9
-ec1:     LDA $03D7
-         AND #$40
-         BEQ ec9
-         LDA #$0F
-         JMP $E073
-ecth:    LDA #$30
-         JMP $E073
-ec9:     RTS
+; D-31 title init ($86C1, was $02 = $03 = 0): BG banks below the split (D-23 bracket copy) and
+; the sprite banks the title's heart cursor (tile $26) expects, as after a cold boot.
+tinit:   LDA #$00
+         STA $02
+         STA $06
+         STA $07
+         STA $13               ; sprite banks below the split (copied to $0158-, IRQ $E2FD):
+         STA $14               ; gameplay left e.g. $2C there and the heart (bank 0 tile $26)
+         STA $15               ; vanished after a real ending
+         STA $16
+         LDA #TBANKS
+         STA $03
+         LDA #$76
+         STA $04
+         LDA #$77
+         STA $05
+         RTS
 dret:    TAX
          LDA $F6
          AND #$20
@@ -654,11 +651,6 @@ cr1:     LDA #<clist
          LDA #>clist
          STA $19
          JMP $E683
-tbanks:  LDA #$00
-         STA $02
-         LDA #TBANKS
-         STA $03
-         RTS
 ; ---- bank 12 $8709 (was JSR $8770, the hidden-command recorder; moved here from bank 13)
 thook:   LDA $0556             ; logo fade-in not done ($87F7 sets bit 7): START does nothing
          BMI th1               ; yet (D-26: mashing START at boot opened the menu unseen
@@ -755,7 +747,8 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     if len(lcode) > 12 or orig[LIVES0_FILE:LIVES0_FILE + 12] != bytes.fromhex("85E8200 8E42078E3A5E8F0E7".replace(" ", "")):
         raise SystemExit("menus: lives0 area")
     p[LIVES0_FILE:LIVES0_FILE + len(lcode)] = lcode
-    dcode0, _ = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC), fixed_free_start)
+    dcode0, _ = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC).replace("TBANKS", "$%02X" % TITLE_BANKS),
+                         fixed_free_start)
     far = fixed_free_start + len(dcode0)        # difficulty.FIXED_SRC starts with far
     tcode, tl = assemble(TITLE_SRC.replace("LIVES0", "$%04X" % ll["lives0"]).replace("FAR", "$%04X" % far),
                          TITLE_ORG, {"sndret": cl["sndret"]})
@@ -767,7 +760,8 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     scode, sl = assemble(ss, SEL_ORG)
     if SEL_ORG + len(scode) > bank10_free_end:
         raise SystemExit("menus: bank 10 code too large")
-    dcode, dl = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC), fixed_free_start)
+    dcode, dl = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC).replace("TBANKS", "$%02X" % TITLE_BANKS),
+                         fixed_free_start)
     if fixed_free_start + len(dcode) > fixed_free_end:
         raise SystemExit("menus: fixed-bank helper does not fit")
     for org, code, foff in ((TITLE_ORG, tcode, 0x1A000 + TITLE_ORG - 0xA000),
@@ -799,7 +793,7 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     put("title_wait", jsr(fl["waitt"]) + b"\xea\xea")
     put("credit_call", jsr(cl["credit"]))
     put("title_blink", jsr(cl["skipsh"]))
-    put("title_bank", jsr(cl["tbanks"]) + b"\xea" * 3)
+    put("title_bank", jsr(dl["tinit"]) + b"\xea" * 3)
     put("lives_cont", jsr(tl["govr"]) + b"\xea")
     put("lives_stage", jsr(sl["slives"]) + b"\xea")
     # D-16: SOUND TEST appears at once: skip the slide ($E6/$E8 end values) and go on at $88AD
