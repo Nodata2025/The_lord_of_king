@@ -727,6 +727,25 @@ def main():
                 orig_p[off - 8:off + 4] != bytes.fromhex("A5F62920F002A2308A4C73E0"):
             raise SystemExit("cut-scene end at file $%05X: unexpected bytes" % off)
         p[off:off + 3] = bytes([0x4C, el["fade"] & 0xFF, el["fade"] >> 8])
+    # D-33: every cut-scene picture set-up "LDA #pal / JSR $80BD / LDA #bank / STA $00" had the
+    # same race as D-20 (palette uploaded one NMI before the picture's CHR bank): DEMO 8/10
+    # showed a frame of font tiles. Rewritten as "LDA #bank / STA $00 / LDA #pal / JSR picfix",
+    # picfix (bank 14 tail $DFF7): PHA / JSR $CD04 / PLA / JMP $80BD. What follows each site
+    # never uses A (checked: LDA / INC / CLC).
+    pf = 0xDFF7
+    if orig_p[0x1DFF7:0x1E000] != b"\xff" * 9:
+        raise SystemExit("picfix: bank 14 tail not free")
+    p[0x1DFF7:0x1DFFF] = bytes.fromhex("482004CD684CBD80")
+    nfix = 0
+    for off in range(0x4000, 0x8000 - 9):
+        o = orig_p[off:off + 9]
+        if o[0] == 0xA9 and o[2:5] == b"\x20\xBD\x80" and o[5] == 0xA9 and o[7:9] == b"\x85\x00" \
+                and off != 0x786F:
+            nxt = orig_p[off + 9]
+            if nxt not in (0xA9, 0xEE, 0x18, 0xA5, 0xAD):
+                raise SystemExit("picfix: site $%05X followed by %02X" % (off, nxt))
+            p[off:off + 9] = bytes([0xA9, o[6], 0x85, 0x00, 0xA9, o[1], 0x20, pf & 0xFF, pf >> 8])
+            nfix += 1
     # D-20: ending start (bank 3 $B86F) queued the princess palette before the picture CHR bank
     # ($00 = $74) reached the shadow registers, so one frame showed the font tiles. Set the bank and
     # copy it ($CD04) first, then start the palette fade. Code in bank 3's $FF tail at $BF96.
