@@ -615,7 +615,8 @@ SITES = {
     "lives_init":  (0x18A7A, "A9028596"),       # LDA #2 / STA $96 -> JSR lives0 / NOP (D-17)
     "lives_cont":  (0x18CCB, "A9028596"),       # continue          -> JSR govr / NOP
     "lives_stage": (0x1512C, "A9028596"),       # STAGE SELECT      -> JSR slives / NOP
-    "credit_call": (0x186CC, "20F689"),         # title build: JSR $89F6 -> JSR credit (D-23)
+    "credit_call": (0x186CC, "20F689"),
+    "title_bank":  (0x186C1, "A90085028503"),   # LDA #0/STA $02/STA $03 -> JSR tbanks / NOP x3         # title build: JSR $89F6 -> JSR credit (D-23)
     "credit_area": (0x18770, "A5F9F015A82910D0"),  # dead hidden-command recorder
     "snd_slide":   (0x18894, "18A5E6690185E6A5E8690029018"[:0] + "18A5E6690185E6A5E869002901"),
 }
@@ -626,7 +627,7 @@ SITES = {
 # now goes to thook, and nothing else jumps or branches into it). Written while the title
 # screen is built with rendering off ($86CC JSR $89F6 -> JSR credit).
 CREDIT_ORG, CREDIT_FILE, CREDIT_END = 0x8770, 0x18770, 0x87EF
-CREDIT_TEXT, CREDIT_PPU = "CREATED BY NODATA", 0x2387      # row 28, columns 7-23
+CREDIT_TEXT, CREDIT_PPU = "[CREATED BY NODATA]", 0x2386    # row 28, columns 6-24
 CREDIT_SRC = """
 credit:  JSR $89F6
          LDA #<clist
@@ -634,13 +635,28 @@ credit:  JSR $89F6
          LDA #>clist
          STA $19
          JMP $E683
+tbanks:  LDA #$00
+         STA $02
+         LDA #TBANKS
+         STA $03
+         RTS
 clist:   .db $01,<ctext,>ctext,CPPULO,CPPUHI
 ctext:   CTEXT
 """
 
 
+# "[" / "]" have no tile in the game's font. Below the title's split (scanline 128) the
+# $0800/$0C00 window shows banks $03/$03+1 = 0/1. Those two banks are copied to the free CHR
+# pair TITLE_BANKS with the brackets in tiles $CC/$CD (unused on the title, menu and SOUND
+# TEST screens: nametable scan 2026-11-17), and the title init ($86C1: $02 = $03 = 0) sets
+# $03 = TITLE_BANKS instead. CHR copy in build.py, PRG below.
+BRACKET_TILES = {"[": 0xCC, "]": 0xCD}
+TITLE_BANKS = 0xFE
+
+
 def credit_tiles(text):
-    return [0xFF if c == " " else "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".index(c) for c in text]
+    return [0xFF if c == " " else BRACKET_TILES[c] if c in BRACKET_TILES else
+            "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".index(c) for c in text]
 
 
 def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_free_end):
@@ -680,13 +696,14 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     put("end_loop", jsr(dl["endchk"]))
     put("lives_init", jsr(tl["lives0"]) + b"\xea")
     t = credit_tiles(CREDIT_TEXT)
-    csrc = (CREDIT_SRC.replace("CPPULO", "$%02X" % (CREDIT_PPU & 0xFF)).replace("CPPUHI", "$%02X" % (CREDIT_PPU >> 8))
+    csrc = (CREDIT_SRC.replace("TBANKS", "$%02X" % TITLE_BANKS).replace("CPPULO", "$%02X" % (CREDIT_PPU & 0xFF)).replace("CPPUHI", "$%02X" % (CREDIT_PPU >> 8))
             .replace("CTEXT", ".db " + ",".join("$%02X" % v for v in [len(t), 1] + t)))
     ccode, cl = assemble(csrc, CREDIT_ORG)
     if CREDIT_ORG + len(ccode) > CREDIT_END:
         raise SystemExit("menus: credit code too large")
     p[CREDIT_FILE:CREDIT_FILE + len(ccode)] = ccode
     put("credit_call", jsr(cl["credit"]))
+    put("title_bank", jsr(cl["tbanks"]) + b"\xea" * 3)
     put("lives_cont", jsr(tl["govr"]) + b"\xea")
     put("lives_stage", jsr(sl["slives"]) + b"\xea")
     # D-16: SOUND TEST appears at once: skip the slide ($E6/$E8 end values) and go on at $88AD

@@ -1,13 +1,14 @@
 """D-22: last staff-roll screen (S77 last page) = one composed picture in the text window.
 
+Row 21 (y 168-175, just below the picture split) carries [THE END] in the game's own English
+tiles (CHR bank 0, $0A-$23; brackets drawn in the same 2 px style, the font has none), written by
+the {THEEND} control ($F8: one row of top-half tiles at PPU $22A3).
 Rows 22-27 (name row + two text lines, 48 px, contiguous) carry, centred on the screen:
-  [THE END]                         the game's own English tiles (CHR bank 0, tiles $0A-$23);
-                                    brackets drawn in the same 2 px style (the font has none)
   -플레이 해 주셔서 감사합니다!-    Galmuri, normal glyph cells
   -Nodata-                          owner's logo, 70 % size (data/gfx/nodata_logo.png, 88x19)
 The 208x48 canvas (columns 3-28) is cut into 8x16 cells; identical cells share a code and empty
 cells are blanks. Cells are reached through private-use characters starting at U+E100.
-In the script: speaker "={ENDCARD0}", text "{ENDCARD1}{BR}{ENDCARD2}".
+In the script: "{THEEND}{ENDCARD1}{BR}{ENDCARD2}" (row 22 stays empty, no speaker).
 """
 import os
 from PIL import Image
@@ -20,11 +21,12 @@ W, H = 26 * 8, 48
 CENTER = 128 - COL0 * 8       # screen centre in canvas pixels
 LOGO = os.path.join(os.path.dirname(__file__), "..", "data", "gfx", "nodata_logo.png")
 CAPTION = "-플레이 해 주셔서 감사합니다!-"
-BRACKET_L = ["###", "##.", "##.", "##.", "##.", "##.", "###"]
-BRACKET_R = ["###", ".##", ".##", ".##", ".##", ".##", "###"]
+BRACKET_L = ["###", "##.", "##.", "##.", "##.", "##.", "###"]   # drawn at columns 4-6 (1 px gap, like letters)
+BRACKET_R = ["###", ".##", ".##", ".##", ".##", ".##", "###"]   # drawn at columns 0-2
 
 _cells = None   # list of 1-bit 8x16 images (index = code - BASE)
 _rows = None    # three strings
+_theend = None  # [THE END] row (screen row 21)
 
 
 def _eng_tile(chr_rom, ch):
@@ -40,22 +42,27 @@ def _eng_tile(chr_rom, ch):
 
 def _bracket(rows):
     im = Image.new("1", (8, 8), 0)
+    dx = 4 if rows is BRACKET_L else 0
     for y, r in enumerate(rows):
         for x, c in enumerate(r):
             if c == "#":
-                im.putpixel((x + 3, y), 1)
+                im.putpixel((x + dx, y), 1)
     return im
+
+
+def bracket_tile(left):
+    """NES 2bpp tile (colour 3) of '[' or ']' in the game's font style."""
+    im = _bracket(BRACKET_L if left else BRACKET_R)
+    lo = bytearray(8)
+    for y in range(8):
+        for x in range(8):
+            if im.getpixel((x, y)):
+                lo[y] |= 0x80 >> x
+    return bytes(lo) + bytes(lo)
 
 
 def compose(chr_rom):
     canvas = Image.new("1", (W, H), 0)
-    # [THE END]: 9 cells of 8 px, glyph rows 0-6, placed at y 5
-    tiles = [_bracket(BRACKET_L)] + [None if c == " " else _eng_tile(chr_rom, c) for c in "THE END"] \
-        + [_bracket(BRACKET_R)]
-    x0 = CENTER - 36
-    for k, t in enumerate(tiles):
-        if t is not None:
-            canvas.paste(t, (x0 + 8 * k, 5))
     # caption: Galmuri cells (ink rows 2-12), cell top at y 14 -> ink 16-26
     x0 = CENTER - 4 * len(CAPTION)
     for k, ch in enumerate(CAPTION):
@@ -67,8 +74,20 @@ def compose(chr_rom):
     return canvas
 
 
+def theend_canvas(chr_rom):
+    """[THE END] on its own 8 px row (screen row 21, y 168-174), centred like the rest."""
+    c = Image.new("1", (W, 8), 0)
+    tiles = [_bracket(BRACKET_L)] + [None if ch == " " else _eng_tile(chr_rom, ch) for ch in "THE END"] \
+        + [_bracket(BRACKET_R)]
+    x0 = CENTER - 36
+    for k, t in enumerate(tiles):
+        if t is not None:
+            c.paste(t, (x0 + 8 * k, 0))
+    return c
+
+
 def build(chr_rom):
-    global _cells, _rows
+    global _cells, _rows, _theend
     canvas = compose(chr_rom)
     cells, index, rows = [], {}, []
     for band in range(3):
@@ -84,8 +103,28 @@ def build(chr_rom):
                 cells.append(cell.convert("L").point(lambda v: 1 if v else 0))
             s += chr(BASE + index[key])
         rows.append(s.rstrip())
+    # [THE END] row: cells whose top 8 px hold the text (only the top tiles are drawn)
+    te = theend_canvas(chr_rom)
+    s = ""
+    for c in range(W // 8):
+        top = te.crop((8 * c, 0, 8 * c + 8, 8))
+        if top.getbbox() is None:
+            s += " "
+            continue
+        cell = Image.new("1", (8, 16), 0)
+        cell.paste(top, (0, 0))
+        key = cell.tobytes()
+        if key not in index:
+            index[key] = len(cells)
+            cells.append(cell.convert("L").point(lambda v: 1 if v else 0))
+        s += chr(BASE + index[key])
+    _theend = s.rstrip()
     _cells, _rows = cells, rows
     return rows
+
+
+def theend():
+    return _theend
 
 
 def rows():

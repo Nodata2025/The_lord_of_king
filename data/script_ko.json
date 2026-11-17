@@ -390,7 +390,7 @@
   "S77": {
    "src_sha1": "5e02b8a108a9982f9f0bb29045f506a6501af40b",
    "state": "needs_review",
-   "ko": "{WAIT}{WAIT}{WAIT}{PAGE}    스태프{WAIT}{PAGE}기획 & 데모 콘티{BR}    가와노 가즈히로{WAIT}{PAGE}그래픽 아티스트{BR}    가토 도모코{WAIT}{PAGE}그래픽 아티스트{BR}    고미야마 게이타{WAIT}{PAGE}스크린 애니메이션{BR}    가토 도모코{WAIT}{PAGE}스크린 애니메이션{BR}    가와노 가즈히로{WAIT}{PAGE}사운드 컴포저{BR}    셀린 다자키{WAIT}{PAGE}프로그램{BR}    나, 나라구요~{WAIT}{PAGE}{ENDCARD1}{BR}{ENDCARD2}{END}"
+   "ko": "{WAIT}{WAIT}{WAIT}{PAGE}    스태프{WAIT}{PAGE}기획 & 데모 콘티{BR}    가와노 가즈히로{WAIT}{PAGE}그래픽 아티스트{BR}    가토 도모코{WAIT}{PAGE}그래픽 아티스트{BR}    고미야마 게이타{WAIT}{PAGE}스크린 애니메이션{BR}    가토 도모코{WAIT}{PAGE}스크린 애니메이션{BR}    가와노 가즈히로{WAIT}{PAGE}사운드 컴포저{BR}    셀린 다자키{WAIT}{PAGE}프로그램{BR}    나, 나라구요~{WAIT}{PAGE}{THEEND}{ENDCARD1}{BR}{ENDCARD2}{END}"
   }
  },
  "menu": {
@@ -709,7 +709,7 @@
    null,
    null,
    null,
-   "={ENDCARD0}"
+   null
   ]
  },
  "speaker_notes": {

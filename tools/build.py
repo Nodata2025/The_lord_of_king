@@ -35,7 +35,7 @@ MAX_LINES = 2
 SET_CAPACITY = 63                               # codes $80-$BE
 BLANK_CODE = 0xBF
 FIRST_SET_BANK = 0x80                           # 1 KB bank index of set 0 (top half)
-MAX_SETS = 64
+MAX_SETS = 63                                   # last pair ($FE/$FF) = title bank copy (D-23)
 
 # ---- in-game menu (bank 12, "weapon exchange / magic up", item type 6) ----
 M_BANK_FILE = 0x18000                 # bank 12 at $8000 while the menu runs
@@ -129,6 +129,8 @@ pre:     LDA $03DF
          BEQ setfont
          CMP #$F9
          BEQ name
+         CMP #$F8
+         BEQ raw21
          RTS
 ; {NAME} = $F9 n c1..cn: speaker tag drawn at PPU $22C3 (rows 22-23) as one 1x2-cell block
 ; through the $0100 buffer. Waits (retries next tick) until the PPU queue is empty.
@@ -164,7 +166,7 @@ nb:      LDA $0102,Y
          LDY #$01
          JSR $E6B0
          BCS nexit
-         LDA $03DA
+nadv:    LDA $03DA
          CLC
          ADC $0100
          CLC
@@ -185,6 +187,32 @@ setfont: LDY $03DA
          PLA                  ; leave the tick without printing
          PLA
          RTS
+; D-22 {THEEND} = $F8 n t1..tn: one row of tiles at PPU $22A3 (row 21, below the picture
+; split): top halves of end-card glyph cells.
+raw21:   LDA $30
+         BNE nexit
+         LDY $03DA
+         INY
+         LDA ($18),Y
+         STA $0100            ; width n
+         LDA #$01
+         STA $0101
+         LDX #$00
+rl:      INY
+         LDA ($18),Y
+         STA $0102,X
+         INX
+         CPX $0100
+         BCC rl
+         LDA #$A3
+         STA $18
+         LDA #$22
+         STA $19
+         LDA #$00
+         LDY #$01
+         JSR $E6B0
+         BCS nexit
+         JMP nadv
 ; A = 1 KB bank for PPU $0800 (A+1 -> $0C00). Only zero page $03 is changed: the game
 ; copies it every frame (bank 14 $CD67 -> $0154-7) and its IRQ applies it at the screen
 ; split. Writing $B000-$B003 directly here caused a one-frame glitch in the picture area
@@ -259,7 +287,7 @@ tick:    INC $B0
 tdone:   RTS
 fast:    JSR $8053             ; $18/$19 = string, $03DF = next byte
          LDA $03DF
-         CMP #$F9
+         CMP #$F8
          BCC fglyph
          CMP #$FD
          BNE fctl
@@ -291,7 +319,7 @@ fl2:     STA $0100
          LDX #$00
          LDY $03DA
 floop:   LDA ($18),Y
-         CMP #$F9
+         CMP #$F8
          BCS fend
          STA $0102,X           ; top row
          INY
@@ -458,6 +486,8 @@ def main():
     for i in sorted(ko):
         for pi, page in enumerate(ko[i].split("{PAGE}")):
             chars = [t for t in tokens(page) if not t.startswith("{") and t != " "]
+            if "{THEEND}" in page:
+                chars += [c for c in endcard.theend() if c != " "]
             chars += [c for c in name_of.get((i, pi), "") if c != " "]
             page_chars.append(chars); page_ref.append((i, pi))
     assign, sets = pack_sets(page_chars)
@@ -497,7 +527,10 @@ def main():
                 tag = name_of[(i, pi)]
                 out += bytes([0xF9, len(tag)] + [BLANK_CODE if c == " " else 0x80 + sets[cur].index(c) for c in tag])
             for t in tokens(body):
-                if t in CTRL:
+                if t == "{THEEND}":
+                    row = endcard.theend()
+                    out += bytes([0xF8, len(row)] + [BLANK_CODE if c == " " else 0x80 + sets[cur].index(c) for c in row])
+                elif t in CTRL:
                     out.append(CTRL[t])
                 elif t == " ":
                     out.append(BLANK_CODE)
@@ -633,6 +666,12 @@ def main():
             new[top + 16 * k: top + 16 * k + 16] = tt
             new[bot + 16 * k: bot + 16 * k + 16] = bt
         # code $BF (k=63) stays blank in both halves
+    # --- D-23: banks 0/1 (title, below the split) copied to $FE/$FF with "[" "]" in tiles $CC/$CD
+    tb = (menus.TITLE_BANKS - FIRST_SET_BANK) * 0x400
+    new[tb:tb + 0x800] = chr_old[0:0x800]
+    for ch, t in menus.BRACKET_TILES.items():
+        a = tb + 16 * (t - 0x80)          # tile $80-$FF of the $0800 window
+        new[a:a + 16] = endcard.bracket_tile(ch == "[")
     # --- original kana tiles ($80-$F7 of CHR banks 2/3) -- D-06: removed in the product.
     #     LOK_KANA=marker paints a detection pattern instead (verification builds only).
     kana_mode = os.environ.get("LOK_KANA", "wipe")
