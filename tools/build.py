@@ -746,6 +746,15 @@ def main():
                 raise SystemExit("picfix: site $%05X followed by %02X" % (off, nxt))
             p[off:off + 9] = bytes([0xA9, o[6], 0x85, 0x00, 0xA9, o[1], 0x20, pf & 0xFF, pf >> 8])
             nfix += 1
+    # D-34: the text-window IRQ (scanline ~163, inside row 20) switched the $0800/$0C00 banks
+    # low nibble first: for a moment the bank was (new low | old high) = a picture bank whose
+    # tile $FF is not blank, and the right end of that scanline showed a coloured streak.
+    # High nibble first: the in-between bank is (new high | old low) = a Korean font bank, where
+    # $BF/$FF are the blank glyph.
+    irq = bytes.fromhex("AD54018D00B0AD55018D01B0AD56018D02B0AD57018D03B0")
+    if orig_p[0x1E2DF:0x1E2F7] != irq:
+        raise SystemExit("IRQ bank order: unexpected bytes")
+    p[0x1E2DF:0x1E2F7] = irq[6:12] + irq[0:6] + irq[18:24] + irq[12:18]
     # D-20: ending start (bank 3 $B86F) queued the princess palette before the picture CHR bank
     # ($00 = $74) reached the shadow registers, so one frame showed the font tiles. Set the bank and
     # copy it ($CD04) first, then start the palette fade. Code in bank 3's $FF tail at $BF96.
