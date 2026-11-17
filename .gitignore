@@ -1,0 +1,18 @@
+# Never commit source or patched images, or source-derived dumps.
+*.nes
+*.fds
+*.unf
+*.unif
+*.zip
+*.7z
+*.ips
+!dist/*.ips
+*.bps
+!dist/*.bps
+build/
+work/
+*.png.src
+# Third-party font binaries are referenced, not tracked (see docs/decisions.md D-02).
+*.ttf
+*.otf
+__pycache__/
