@@ -79,8 +79,31 @@ mstore:  STA $0560
          LDA #$02
          STA $055E
          RTS
+; ---- HUD split address (D-10): the game stores the HUD nametable address ($2Bxx) in
+; $E9/$EA and writes it to $2006 in the IRQ. Bit $20 of the high byte lands in fine Y, so
+; the HUD was drawn 2 px low and the last 2 scanlines showed attribute bytes as digit tiles.
+; Clearing that bit at the two places that set $EA removes the strip (timing unchanged).
+hudset1: PHP                   ; bank 14 $C06A (was STY $EA / RTS)
+         PHA
+         TYA
+         AND #$DF
+         STA $EA
+         PLA
+         PLP
+         RTS
+hudset2: PHA                   ; bank 14 $C216 (was STY $EA / INC $034D / RTS)
+         TYA
+         AND #$DF
+         STA $EA
+         PLA
+         INC $034D
+         RTS
 menublock: .db BLOCK
 """
+HUD_SITES = {                  # bank 14 file offset: expected original bytes
+    0x1C06A: bytes.fromhex("84EA60"),
+    0x1C216: bytes.fromhex("84EAEE4D0360"),
+}
 
 CTRL = {"{PAGE}": 0xFB, "{WAIT}": 0xFC, "{BR}": 0xFD, "{END}": 0xFE}
 
@@ -357,6 +380,12 @@ def main():
     a = M_BANK_FILE + 0x81CA - BANK_CPU
     p[a:a + 4] = bytes([0xA9, mlabels["menublock"] & 0xFF, 0xA0, mlabels["menublock"] >> 8])
     p[MENU_CALL_FILE:MENU_CALL_FILE + 3] = mj("menuwrap")
+    for off, exp in HUD_SITES.items():
+        if orig_p[off:off + len(exp)] != exp:
+            raise SystemExit(f"unexpected HUD bytes at file ${off:05X}")
+    h1, h2 = mlabels["hudset1"], mlabels["hudset2"]
+    p[0x1C06A:0x1C06D] = bytes([0x4C, h1 & 0xFF, h1 >> 8])                 # JMP hudset1
+    p[0x1C216:0x1C21C] = bytes([0x20, h2 & 0xFF, h2 >> 8, 0x60, 0xEA, 0xEA])  # JSR hudset2 / RTS
 
     # --- hooks
     code, labels = assemble(HOOKS.replace("FIRST", "$%02X" % FIRST_SET_BANK), CODE_ORG)
