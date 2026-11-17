@@ -24,8 +24,9 @@ STAGE SELECT·SOUND TEST·DEMO SELECT는 원작에 숨어 있던 화면입니다
 
 - 공통: 방향키 이동, **A/START 실행**, **B/SELECT 나가기**
 - STAGE SELECT: STAGE 1-1 ~ 6-2
-- DEMO SELECT: DEMO 1 ~ 11 (1·2 오프닝, 11 엔딩)
+- DEMO SELECT: DEMO 1 ~ 11 (1·2 오프닝, 11 엔딩). 보는 도중 START로 목록에 돌아감
 - SOUND TEST: ↑↓ 줄 선택(BGM/EFFECT), ←→ 번호, A/START 재생
+- 본편 엔딩: 「끝」이 나온 뒤 START → 오프닝
 
 ## 도구
 

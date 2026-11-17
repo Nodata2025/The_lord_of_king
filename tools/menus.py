@@ -313,14 +313,15 @@ SEL_ORG = 0x9A00
 
 
 def _list(title, labels, col1, col2):
-    """E683 list: [count] + [src lo][src hi][ppu lo][ppu hi]..., title at $20CA."""
+    """E683 list: [count] + [src lo][src hi][ppu lo][ppu hi]..., title at $20CA.
+    Row-major (D-16): item k sits in row k // 2, column k % 2."""
     rows = [10, 13, 16, 19, 22, 25]
     ents, blocks = [], []
     blocks.append(("t", text(title)))
     ents.append(("t", 0x20CA))
     for k, lab in enumerate(labels):
-        col = col1 if k < 6 else col2
-        r = rows[k if k < 6 else k - 6]
+        col = col1 if k % 2 == 0 else col2
+        r = rows[k // 2]
         name = f"i{k}"
         blocks.append((name, text(lab)))
         ents.append((name, 0x2000 + 32 * r + col))
@@ -343,7 +344,8 @@ DEMOS = [f"DEMO {n}" for n in range(1, 12)]
 DEMO_MODE = [0x0F, 0x12, 0x15, 0x18, 0x1B, 0x1E, 0x21, 0x24, 0x27, 0x2A, 0x2D]
 
 SEL_SRC = """
-; $03E4 index (0-5 left column, 6-10 right), $03E5 left-column cursor x, $03E6 0 stage / 1 demo
+; $03E4 index 0-10 (row-major: row = index / 2, column = index % 2),
+; $03E5 left-column cursor x, $03E6 0 stage / 1 demo
 sloopS:  LDA #$20
          STA $03E5
          LDA #$00
@@ -357,44 +359,42 @@ sel:     JSR scur
          JSR $E3E8
          JSR $E378
          LDA $F9
-         AND #$08              ; up
+         AND #$08              ; up: one row = two items
          BEQ s1
          LDA $03E4
-         BEQ u9
-         CMP #$06
-         BEQ u9
-         DEC $03E4
+         CMP #$02
+         BCC u9
+         SBC #$02
+         STA $03E4
 u9:      JMP sel
 s1:      LDA $F9
          AND #$04              ; down
          BEQ s2
          LDA $03E4
-         CMP #$05
-         BEQ d9
-         CMP #$0A
-         BEQ d9
-         INC $03E4
+         CLC
+         ADC #$02
+         CMP #$0B
+         BCS d9
+         STA $03E4
 d9:      JMP sel
 s2:      LDA $F9
          AND #$02              ; left
          BEQ s3
          LDA $03E4
-         CMP #$06
-         BCC l9
-         SBC #$06
-         STA $03E4
+         AND #$01
+         BEQ l9
+         DEC $03E4
 l9:      JMP sel
 s3:      LDA $F9
          AND #$01              ; right
          BEQ s4
          LDA $03E4
-         CMP #$06
+         AND #$01
+         BNE r9
+         LDA $03E4
+         CMP #$0A
          BCS r9
-         ADC #$06
-         CMP #$0B
-         BCC s3b
-         LDA #$0A
-s3b:     STA $03E4
+         INC $03E4
 r9:      JMP sel
 s4:      LDA $F9
          AND #$90              ; A/START: execute
@@ -427,15 +427,15 @@ s9:      JMP sel
 scur:    LDA #$8B              ; original heart cursor object
          STA $03D6
          LDA $03E4
-         CMP #$06
-         BCS sc2
-         TAX
-         LDA $03E5
+         AND #$01
+         BNE sc2
+         LDA $03E5             ; left column x
          JMP sc3
-sc2:     SBC #$06
-         TAX
-         LDA #$90
+sc2:     LDA #$90              ; right column x
 sc3:     STA $03DB
+         LDA $03E4
+         LSR A
+         TAX
          LDA ytab,X
          STA $03DE
          LDA #$13
@@ -486,6 +486,29 @@ iskip:   LDA $0102
 isk1:    LDA $F9
          AND #$10
          RTS
+; ending main loop (bank 3 $B82C, was JSR $CCF8): START leaves the ending.
+; From DEMO SELECT: any time -> DEMO SELECT. In the game the ending stops at S76 "끝" (the
+; staff roll S77 only follows in DEMO 11): once S76 or S77 has finished -> the opening ($0F).
+endchk:  JSR $CCF8
+         LDA $F9
+         AND #$10
+         BEQ ec9
+         LDA $F6
+         AND #$20
+         BNE ecth
+         LDA $03D6
+         CMP #$4C              ; S76
+         BEQ ec1
+         CMP #$4D              ; S77
+         BNE ec9
+ec1:     LDA $03D7
+         AND #$40
+         BEQ ec9
+         LDA #$0F
+         JMP $E073
+ecth:    LDA #$30
+         JMP $E073
+ec9:     RTS
 dret:    TAX
          LDA $F6
          AND #$20
@@ -509,6 +532,8 @@ SITES = {
     "m0F_end":     (0x4000 + 0x1E81, "A9004C73E0"),
     "m12_skip":    (0x6000 + 0x00A3, "A9034C73E0"),
     "m12_end":     (0x6000 + 0x02BC, "A9034C73E0"),
+    "end_loop":    (0x6000 + 0x182C, "20F8CC"),        # ending loop: JSR $CCF8 -> JSR endchk
+    "snd_slide":   (0x18894, "18A5E6690185E6A5E8690029018"[:0] + "18A5E6690185E6A5E869002901"),
 }
 
 
@@ -546,6 +571,9 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     put("stage_list", jsr(sl["slist"]))
     put("stage_loop", jmp(sl["sloopS"]))
     put("intro_start", jsr(dl["iskip"]) + b"\xea")
+    put("end_loop", jsr(dl["endchk"]))
+    # D-16: SOUND TEST appears at once: skip the slide ($E6/$E8 end values) and go on at $88AD
+    put("snd_slide", bytes.fromhex("A90085E6A90185E84CAD88") + b"\xea" * 2)
     for name in ("m0F_skip", "m0F_end", "m12_skip", "m12_end"):
         off = SITES[name][0]
         p[off + 3:off + 5] = bytes([dl["dret"] & 0xFF, dl["dret"] >> 8])   # JMP $E073 -> JMP dret
