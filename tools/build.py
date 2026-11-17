@@ -114,6 +114,7 @@ PATCHES_EXPECT = {
     0x80A9: bytes.fromhex("ADD703"),     # LDA $03D7   ({END} handler)
     0x800E: bytes.fromhex("ADD703"),     # LDA $03D7   (per-frame: wait check)
     0x8022: bytes.fromhex("E6B0A5B02907D006205380206680"),  # 8-frame tick
+    0x80E8: bytes.fromhex("C3220323"),   # line base table: $22C3, $2303
     0x80CD: bytes.fromhex("DF"),         # LDA #<clear table
     0x80D1: bytes.fromhex("80"),         # LDA #>clear table
 }
@@ -123,6 +124,51 @@ HOOKS = """
 pre:     LDA $03DF
          CMP #$FA
          BEQ setfont
+         CMP #$F9
+         BEQ name
+         RTS
+; {NAME} = $F9 n c1..cn: speaker tag drawn at PPU $22C3 (rows 22-23) as one 1x2-cell block
+; through the $0100 buffer. Waits (retries next tick) until the PPU queue is empty.
+name:    LDA $30
+         BNE nexit
+         LDY $03DA
+         INY
+         LDA ($18),Y
+         STA $0100            ; width n
+         LDA #$02
+         STA $0101
+         LDX #$00
+nl:      INY
+         LDA ($18),Y
+         STA $0102,X
+         INX
+         CPX $0100
+         BCC nl
+         LDY #$00
+nb:      LDA $0102,Y
+         CLC
+         ADC #$40
+         STA $0102,X
+         INX
+         INY
+         CPY $0100
+         BCC nb
+         LDA #$C3
+         STA $18
+         LDA #$22
+         STA $19
+         LDA #$00
+         LDY #$01
+         JSR $E6B0
+         BCS nexit
+         LDA $03DA
+         CLC
+         ADC $0100
+         CLC
+         ADC #$02
+         STA $03DA
+nexit:   PLA                  ; leave the tick without printing
+         PLA
          RTS
 setfont: LDY $03DA
          INY
@@ -210,7 +256,7 @@ tick:    INC $B0
 tdone:   RTS
 fast:    JSR $8053             ; $18/$19 = string, $03DF = next byte
          LDA $03DF
-         CMP #$FA
+         CMP #$F9
          BCC fglyph
          CMP #$FD
          BNE fctl
@@ -242,7 +288,7 @@ fl2:     STA $0100
          LDX #$00
          LDY $03DA
 floop:   LDA ($18),Y
-         CMP #$FA
+         CMP #$F9
          BCS fend
          STA $0102,X           ; top row
          INY
@@ -261,14 +307,14 @@ fb:      LDA $0102,Y           ; bottom row = top + $40 ($BF -> $FF blank)
          INY
          CPY $0100
          BCC fb
-         LDA $03DB             ; PPU address = $22C3 + col (+38 on line 2)
+         LDA $03DB             ; PPU address = $2303 + col (+38 on line 2, $2343)
          CMP #$1A
          BCC fp1
          ADC #$25
 fp1:     CLC
-         ADC #$C3
+         ADC #$03
          STA $18
-         LDA #$22
+         LDA #$23
          ADC #$00
          STA $19
          LDA #$00
@@ -285,11 +331,13 @@ fp1:     CLC
          STA $03DA
 fdone:   RTS
 ; ---- {PAGE} clear: 4 rows (glyph rows 22-25), source $CD01 = [$A0][1][$FF] ----
-cleartbl: .db $04
+cleartbl: .db $06
          .db $01,$CD,$C0,$22
          .db $01,$CD,$E0,$22
          .db $01,$CD,$00,$23
          .db $01,$CD,$20,$23
+         .db $01,$CD,$40,$23
+         .db $01,$CD,$60,$23
 """
 
 
@@ -363,17 +411,36 @@ def main():
         if hashlib.sha1(src[i]).hexdigest() != e["src_sha1"]:
             raise SystemExit(f"{sid}: source hash mismatch (stale translation baseline)")
         if e.get("ko"):
-            check_layout(sid, e["ko"])
+            check_layout(sid, e["ko"].replace("{SPLIT}", "{WAIT}{PAGE}"))
             ctl = lambda t: re.findall(r"\{(?:WAIT|PAGE|BR|END)\}", t)
-            if ctl(e["ko"]) != ctl(decode(bytes(src[i]))):
+            # D-12: {SPLIT} (speaker change) stands where the source has {BR}
+            if ctl(e["ko"].replace("{SPLIT}", "{BR}")) != ctl(decode(bytes(src[i]))):
                 raise SystemExit(f"{sid}: control token sequence differs from source")
-            ko[i] = e["ko"]
+            ko[i] = e["ko"].replace("{SPLIT}", "{WAIT}{PAGE}")
+
+    # --- speaker tags (D-13): one entry per page that holds text, None = no tag
+    speakers = load_script().get("speakers", {})
+    name_of = {}
+    for i in sorted(ko):
+        sid = f"S{i:02d}"
+        text_pages = [pi for pi, pg in enumerate(ko[i].split("{PAGE}"))
+                      if re.sub(r"\{[^}]+\}", "", pg).strip()]
+        names = speakers.get(sid, [None] * len(text_pages))
+        if len(names) != len(text_pages):
+            raise SystemExit(f"{sid}: {len(names)} speakers for {len(text_pages)} text pages")
+        for pi, nm in zip(text_pages, names):
+            if nm:
+                tag = "[" + nm + "]"
+                if len(tag) > LINE_CELLS:
+                    raise SystemExit(f"{sid}: speaker tag too long")
+                name_of[(i, pi)] = tag
 
     # --- pages in script order, glyph sets
     page_chars, page_ref = [], []
     for i in sorted(ko):
         for pi, page in enumerate(ko[i].split("{PAGE}")):
             chars = [t for t in tokens(page) if not t.startswith("{") and t != " "]
+            chars += [c for c in name_of.get((i, pi), "") if c != " "]
             page_chars.append(chars); page_ref.append((i, pi))
     assign, sets = pack_sets(page_chars)
     set_of = dict(zip(page_ref, assign))
@@ -408,6 +475,9 @@ def main():
             s = set_of.get((i, pi))
             if s is not None and s != cur and re.sub(r"\{[^}]+\}", "", body).strip():
                 out += bytes([0xFA, s]); cur = s
+            if (i, pi) in name_of:
+                tag = name_of[(i, pi)]
+                out += bytes([0xF9, len(tag)] + [BLANK_CODE if c == " " else 0x80 + sets[cur].index(c) for c in tag])
             for t in tokens(body):
                 if t in CTRL:
                     out.append(CTRL[t])
@@ -513,6 +583,7 @@ def main():
     def put(cpu, b):
         a = cpu2file(cpu); p[a:a + len(b)] = b
     put(0x8066, jsr("pre"))
+    put(0x80E8, bytes.fromhex("03234323"))   # D-13: text lines move to rows 24 and 26 (name on 22)
     put(0x800E, jsr("abtn"))
     put(0x8022, bytes([0x4C, labels["tick"] & 0xFF, labels["tick"] >> 8]))
     put(0x8093, jsr("newchar") + b"\xea")
