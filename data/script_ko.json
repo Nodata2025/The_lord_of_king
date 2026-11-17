@@ -180,7 +180,7 @@
   "S35": {
    "src_sha1": "8f68eabaa61f01610cd6bffa85747948a2498714",
    "state": "needs_review",
-   "ko": "표식에 주의하세요.{BR}안 그러면,……여기에…….{WAIT}{PAGE}{END}"
+   "ko": "표식에 주의하세요.{BR}그렇게 하면,……여기에…….{WAIT}{PAGE}{END}"
   },
   "S36": {
    "src_sha1": "e6a1a15d7beaf896a28409ac54f75fd464acccc4",
