@@ -614,7 +614,8 @@ SITES = {
     "lives_cont":  (0x18CCB, "A9028596"),       # continue          -> JSR govr / NOP
     "lives_stage": (0x1512C, "A9028596"),       # STAGE SELECT      -> JSR slives / NOP
     "credit_call": (0x186CC, "20F689"),
-    "title_blink": (0x186FD, "205988"),         # title loop JSR $8859 -> JSR skipsh (D-25)
+    "title_blink": (0x186FD, "205988"),
+    "title_wait":  (0x186F8, "A90120CCE3"),     # LDA #1 / JSR $E3CC -> JSR waitt / NOP NOP (D-27)         # title loop JSR $8859 -> JSR skipsh (D-25)
     "title_bank":  (0x186C1, "A90085028503"),   # LDA #0/STA $02/STA $03 -> JSR tbanks / NOP x3         # title build: JSR $89F6 -> JSR credit (D-23)
     "credit_area": (0x18770, "A5F9F015A82910D0"),  # dead hidden-command recorder
     "snd_slide":   (0x18894, "18A5E6690185E6A5E8690029018"[:0] + "18A5E6690185E6A5E869002901"),
@@ -703,6 +704,29 @@ lv2:     STA $96
 """
 
 
+# D-27: back from a select screen the title neither waits its first second ($86F8 LDA #1 /
+# JSR $E3CC) nor fades the logo in: the fade's last step ($87F7: table $8847 + 5*3 -> $0121-$0123,
+# $012F = $30, $0556 bit 7) is done at once. Lives in the dead tail of the old SOUND TEST loop
+# (bank 12 $88C1-$88E3; only that loop reached it).
+FASTFD_ORG, FASTFD_FILE, FASTFD_END = 0x88C1, 0x188C1, 0x88E4
+FASTFD_SRC = """
+waitt:   JSR REOPEN
+         BNE slow
+         LDX #$02
+ffl:     LDA $8856,X
+         STA $0121,X
+         DEX
+         BPL ffl
+         LDA #$30
+         STA $012F
+         LDA #$80
+         STA $0556
+         JMP $E40F
+slow:    LDA #$01
+         JMP $E3CC
+"""
+
+
 def credit_tiles(text):
     return [0xFF if c == " " else BRACKET_TILES[c] if c in BRACKET_TILES else
             "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".index(c) for c in text]
@@ -755,6 +779,11 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     put("end_loop", jsr(dl["endchk"]))
     put("lives_init", jsr(ll["lives0"]) + b"\xea")
     p[CREDIT_FILE:CREDIT_FILE + len(ccode)] = ccode
+    fcode, fl = assemble(FASTFD_SRC.replace("REOPEN", "$%04X" % cl["reopen"]), FASTFD_ORG)
+    if FASTFD_ORG + len(fcode) > FASTFD_END or orig[FASTFD_FILE:FASTFD_FILE + 3] != bytes.fromhex("2078E3"):
+        raise SystemExit("menus: fastfd area")
+    p[FASTFD_FILE:FASTFD_FILE + len(fcode)] = fcode
+    put("title_wait", jsr(fl["waitt"]) + b"\xea\xea")
     put("credit_call", jsr(cl["credit"]))
     put("title_blink", jsr(cl["skipsh"]))
     put("title_bank", jsr(cl["tbanks"]) + b"\xea" * 3)
