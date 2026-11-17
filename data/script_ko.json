@@ -392,5 +392,25 @@
    "state": "needs_review",
    "ko": "{WAIT}{WAIT}{WAIT}{PAGE}    스태프{WAIT}{PAGE}기획 & 데모 콘티{BR}    가와노 가즈히로{WAIT}{PAGE}그래픽 아티스트{BR}    가토 도모코{WAIT}{PAGE}그래픽 아티스트{BR}    고미야마 게이타{WAIT}{PAGE}스크린 애니메이션{BR}    가토 도모코{WAIT}{PAGE}스크린 애니메이션{BR}    가와노 가즈히로{WAIT}{PAGE}사운드 컴포저{BR}    셀린 다자키{WAIT}{PAGE}프로그램{BR}    나, 나라구요~{WAIT}{PAGE}정말로 끝이야~{END}"
   }
+ },
+ "menu": {
+  "M0": {
+   "src_sha1": "4c7c3ffc03e2d520df1aa264a2bb8417dcd4ec2c",
+   "ko": "무기 교환할래? 마법 파워업할래?",
+   "state": "needs_review",
+   "where": "아이템 메뉴 질문 (큐티)"
+  },
+  "M1": {
+   "src_sha1": "bed7340334e3c4874fe830b30b3be28f19c2bb66",
+   "ko": " 아래……교환     위……마법",
+   "state": "needs_review",
+   "where": "선택 안내: 아래=무기 교환, 위=마법"
+  },
+  "M2": {
+   "src_sha1": "de77cdac25f2d8017d6e7fd5af2f4996ccc3f2d1",
+   "ko": "     파이팅! 로슈!!",
+   "state": "needs_review",
+   "where": "메뉴 종료 응원"
+  }
  }
 }

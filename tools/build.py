@@ -36,6 +36,71 @@ BLANK_CODE = 0xBF
 FIRST_SET_BANK = 0x80                           # 1 KB bank index of set 0 (top half)
 MAX_SETS = 64
 
+# ---- in-game menu (bank 12, "weapon exchange / magic up", item type 6) ----
+M_BANK_FILE = 0x18000                 # bank 12 at $8000 while the menu runs
+FIXED_FILE, FIXED_CPU = 0x1E000, 0xE000
+FIXED_FREE = (0xFEEE, 0xFFE0)         # $FF-filled, before the internal title "THE LORD OF KING"
+MENU_SRC = {                          # id: (cpu addr, kind, original length incl. terminator/header)
+    "M0": (0x8388, "string", 23),     # question, typed at PPU $2AE4
+    "M1": (0x83A0, "block", 23),      # choice line, block [w][h] queued at PPU $2B24
+    "M2": (0x83CD, "string", 18),     # cheer, typed at PPU $2B24
+}
+MENU_EXPECT = {
+    0x8320: bytes.fromhex("A9018D5D058D5E05"),   # 1x1 header for the typed glyph
+    0x81CA: bytes.fromhex("A9A0A083"),           # LDA #<block / LDY #>block
+}
+MENU_CALL_FILE = 0x1CA66                          # bank 14 $CA66: JSR $80C2 (menu)
+MENU_CALL_EXPECT = bytes.fromhex("20C280")
+MENU_CELLS = 25                                   # window interior from column 4
+
+MENU_HOOKS = """
+fsetbanks: STA $03
+         TAX
+         AND #$0F
+         STA $B000
+         TXA
+         LSR A
+         LSR A
+         LSR A
+         LSR A
+         STA $B001
+         INX
+         TXA
+         AND #$0F
+         STA $B002
+         TXA
+         LSR A
+         LSR A
+         LSR A
+         LSR A
+         STA $B003
+         RTS
+; bank 14 $CA66 calls this instead of the menu: Korean set in, menu, original banks back
+menuwrap: LDA #MENUBANK
+         JSR fsetbanks
+         JSR $80C2
+         LDA #$02
+         JSR fsetbanks
+         RTS
+; bank 12 $8320: build a 1x2 source [1][2][top=$055F][bottom=$0560]
+menuchar: LDA $055F
+         CMP #$80
+         BCC mblank            ; kept tiles ($00-$7F, e.g. SPELL POWER UP): blank below
+         CMP #$FF
+         BEQ mblank
+         CLC
+         ADC #$40
+         BNE mstore
+mblank:  LDA #$FF
+mstore:  STA $0560
+         LDA #$01
+         STA $055D
+         LDA #$02
+         STA $055E
+         RTS
+menublock: .db BLOCK
+"""
+
 CTRL = {"{PAGE}": 0xFB, "{WAIT}": 0xFC, "{BR}": 0xFD, "{END}": 0xFE}
 
 # Expected original bytes at each patch site (CPU address in bank 10).
@@ -213,7 +278,24 @@ def main():
     assign, sets = pack_sets(page_chars)
     set_of = dict(zip(page_ref, assign))
 
-    # --- encode strings
+    # --- menu strings: own set appended after the dialogue sets
+    menu = load_script().get("menu", {})
+    m = mprg = None
+    menu_chars = []
+    for mid, (cpu, kind, n) in MENU_SRC.items():
+        e = menu[mid]
+        a = M_BANK_FILE + cpu - BANK_CPU
+        raw = bytes(p[a:a + n])
+        if hashlib.sha1(raw).hexdigest() != e["src_sha1"]:
+            raise SystemExit(f"{mid}: source hash mismatch")
+        if len(tokens(e["ko"])) > MENU_CELLS:
+            raise SystemExit(f"{mid}: {len(tokens(e['ko']))} cells (max {MENU_CELLS})")
+        menu_chars += [t for t in tokens(e["ko"]) if t != " "]
+    menu_set = list(dict.fromkeys(menu_chars))
+    if len(menu_set) > SET_CAPACITY:
+        raise SystemExit("menu glyphs exceed one set")
+
+
     blobs = []
     for i in range(PTR_COUNT):
         if i not in ko:
@@ -266,6 +348,45 @@ def main():
     for k, v in enumerate(ptrs):
         p[t + 2 * k] = v & 0xFF; p[t + 2 * k + 1] = v >> 8
 
+    # --- menu: set index, strings in place, block + hooks in the fixed bank
+    sets.append(menu_set)
+    if len(sets) > MAX_SETS:
+        raise SystemExit("too many font sets")
+    menu_bank = FIRST_SET_BANK + 2 * (len(sets) - 1)
+    enc = lambda t: BLANK_CODE if t == " " else 0x80 + menu_set.index(t)
+    for mid in ("M0", "M2"):
+        cpu, kind, n = MENU_SRC[mid]
+        b = bytes(enc(t) for t in tokens(menu[mid]["ko"])) + b"\xfe"
+        if len(b) > n:
+            raise SystemExit(f"{mid}: {len(b)} bytes, original space {n}")
+        a = M_BANK_FILE + cpu - BANK_CPU
+        p[a:a + n] = b + b"\xff" * (n - len(b))
+    m1 = [enc(t) for t in tokens(menu["M1"]["ko"])]
+    block = bytes([len(m1), 2] + m1 + [(c + 0x40) & 0xFF if c != BLANK_CODE else 0xFF for c in m1])
+    a = M_BANK_FILE + MENU_SRC["M1"][0] - BANK_CPU
+    p[a:a + MENU_SRC["M1"][2]] = b"\xff" * MENU_SRC["M1"][2]       # old block no longer referenced
+    msrc = MENU_HOOKS.replace("MENUBANK", "$%02X" % menu_bank).replace(
+        "BLOCK", ",".join("$%02X" % x for x in block))
+    mcode, mlabels = assemble(msrc, FIXED_FREE[0])
+    if FIXED_FREE[0] + len(mcode) > FIXED_FREE[1]:
+        raise SystemExit("menu hooks do not fit in the fixed bank")
+    orig_p = prg(rom)
+    fa = FIXED_FILE + FIXED_FREE[0] - FIXED_CPU
+    if any(x != 0xFF for x in orig_p[fa:fa + len(mcode)]):
+        raise SystemExit("fixed-bank free area is not $FF")
+    for cpu, exp in MENU_EXPECT.items():
+        a = M_BANK_FILE + cpu - BANK_CPU
+        if orig_p[a:a + len(exp)] != exp:
+            raise SystemExit(f"unexpected menu bytes at ${cpu:04X}")
+    if orig_p[MENU_CALL_FILE:MENU_CALL_FILE + 3] != MENU_CALL_EXPECT:
+        raise SystemExit("unexpected bytes at bank 14 $CA66")
+    p[fa:fa + len(mcode)] = mcode
+    mj = lambda lab: bytes([0x20, mlabels[lab] & 0xFF, mlabels[lab] >> 8])
+    a = M_BANK_FILE + 0x8320 - BANK_CPU; p[a:a + 8] = mj("menuchar") + b"\xea" * 5
+    a = M_BANK_FILE + 0x81CA - BANK_CPU
+    p[a:a + 4] = bytes([0xA9, mlabels["menublock"] & 0xFF, 0xA0, mlabels["menublock"] >> 8])
+    p[MENU_CALL_FILE:MENU_CALL_FILE + 3] = mj("menuwrap")
+
     # --- hooks
     code, labels = assemble(HOOKS.replace("FIRST", "$%02X" % FIRST_SET_BANK), CODE_ORG)
     if CODE_ORG + len(code) > CODE_END:
@@ -317,6 +438,8 @@ def main():
         "glyphs_per_set": [len(s) for s in sets],
         "text_bytes": used,
         "hook_bytes": len(code),
+        "menu_hook_bytes": len(mcode),
+        "menu_set": len(sets) - 1,
         "hook_labels": {k: "$%04X" % v for k, v in labels.items()},
     }
     json.dump(report, open(out_path + ".json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
