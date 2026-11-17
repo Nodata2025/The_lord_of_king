@@ -232,21 +232,34 @@ def main():
                     out.append(0x80 + sets[cur].index(t))
         blobs.append(bytes(out))
 
-    # --- place strings: original region first, then the spill area
-    regions = [[TEXT_START, TEXT_END], [SPILL_START, SPILL_END]]
-    ptrs, r = [], 0
-    for b in blobs:
+    # --- place strings
+    # Untranslated entries stay at their original address (unchanged bytes never enter the
+    # patch, so no source text is distributed). Translated entries go to the spill area.
+    # When everything is translated, the whole script is repacked into the original region
+    # first, then the spill area.
+    ptrs = [0] * PTR_COUNT
+    t = cpu2file(PTR_TABLE)
+    orig_ptrs = [p[t + 2 * k] | p[t + 2 * k + 1] << 8 for k in range(PTR_COUNT)]
+    if len(ko) == PTR_COUNT:
+        regions = [[TEXT_START, TEXT_END], [SPILL_START, SPILL_END]]
+        a0, a1 = cpu2file(TEXT_START), cpu2file(TEXT_END)
+        p[a0:a1] = b"\xff" * (a1 - a0)
+        order = range(PTR_COUNT)
+    else:
+        regions = [[SPILL_START, SPILL_END]]
+        order = sorted(ko)
+        for k in range(PTR_COUNT):
+            ptrs[k] = orig_ptrs[k]
+    r = 0
+    for k in order:
+        b = blobs[k]
         while regions[r][0] + len(b) > regions[r][1]:
             r += 1
             if r >= len(regions):
                 raise SystemExit("script does not fit in bank 10")
-        ptrs.append(regions[r][0])
+        ptrs[k] = regions[r][0]
         a = cpu2file(regions[r][0]); p[a:a + len(b)] = b; regions[r][0] += len(b)
-    used = {"main": regions[0][0] - TEXT_START, "spill": regions[1][0] - SPILL_START}
-    # pad freed original region with $FF so stale bytes never look like text
-    a0, a1 = cpu2file(regions[0][0]), cpu2file(TEXT_END)
-    p[a0:a1] = b"\xff" * (a1 - a0)
-    t = cpu2file(PTR_TABLE)
+    used = {"spill": regions[-1][0] - SPILL_START}
     for k, v in enumerate(ptrs):
         p[t + 2 * k] = v & 0xFF; p[t + 2 * k + 1] = v >> 8
 

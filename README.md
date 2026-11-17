@@ -13,11 +13,18 @@
 | 크기 | 262,160 바이트 |
 | SHA-1 | `b1cad2d3e38ccd7780437d2c83effa254576861b` |
 
+## 패치
+
+시험용 패치는 [dist/](dist/)에 있습니다. 일본판 원본 롬에 IPS로 적용하세요.
+
 ## 도구
 
 ```sh
 # 원문 추출 (build/script_ja.json, git 제외)
 python3 tools/extract_script.py 롬경로.nes
+# 빌드 (build/lok_ko_dev.nes) 와 IPS 생성
+LOK_FONT=Galmuri11-Condensed.ttf python3 tools/build.py 롬경로.nes
+python3 tools/make_ips.py 롬경로.nes build/lok_ko_dev.nes dist/LordOfKing_KR_dev.ips
 ```
 
 ## 문서
