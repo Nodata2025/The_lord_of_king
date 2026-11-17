@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from common import load_rom, prg, decode, HEADER, PRG_SIZE  # noqa: E402
 from asm6502 import assemble  # noqa: E402
 import glyphs  # noqa: E402
+import endcard  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -354,10 +355,17 @@ def tokens(text):
 def load_script():
     path = os.path.join(ROOT, "data", "script_ko.json")
     d = json.load(open(path, encoding="utf-8"))
-    # D-22: {LOGO1}/{LOGO2} = top/bottom 16 cells of the "-Nodata-" logo (tools/glyphs.py)
-    for e in d["entries"].values():
-        if e.get("ko"):
-            e["ko"] = e["ko"].replace("{LOGO1}", glyphs.logo_chars(0)).replace("{LOGO2}", glyphs.logo_chars(1))
+    # D-22: {ENDCARD0..2} = the three rows of the composed end card (tools/endcard.py)
+    rows = endcard.rows()
+    if rows:
+        def ex(t):
+            for k in range(3):
+                t = t.replace("{ENDCARD%d}" % k, rows[k])
+            return t
+        for e in d["entries"].values():
+            if e.get("ko"):
+                e["ko"] = ex(e["ko"])
+        d["speakers"] = {k: [ex(n) if n else n for n in v] for k, v in d["speakers"].items()}
     return d
 
 
@@ -406,6 +414,7 @@ def pack_sets(pages):
 
 def main():
     rom = bytearray(load_rom(sys.argv[1] if len(sys.argv) > 1 else None))
+    endcard.build(bytes(rom[HEADER + PRG_SIZE:]))   # D-22 (needs the original English tiles)
     out_path = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "build", "lok_ko_dev.nes")
     p = bytearray(prg(rom))
     src = source_entries(p)
