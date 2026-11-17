@@ -2,6 +2,9 @@
 
 패치 파일은 `dist/LordOfKing_KR_v<버전>.ips`. `-dev`가 붙은 버전은 검수 전 개발용입니다.
 
+## v0.12.6-dev (2026-11-17)
+- STAGE SELECT / DEMO SELECT에서 메뉴로 돌아올 때 「PUSH START BUTTON」·저작권·JALECO 로고가 잠깐 보이던 것 생략: 로고만 나타난 뒤 바로 메뉴.
+
 ## v0.12.5-dev (2026-11-17)
 - 타이틀 메뉴 난이도 표시에 대괄호: DIFFICULTY [EASY] / [NORMAL] / [HARD].
 

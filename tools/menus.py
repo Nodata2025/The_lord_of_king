@@ -615,6 +615,7 @@ SITES = {
     "lives_cont":  (0x18CCB, "A9028596"),       # continue          -> JSR govr / NOP
     "lives_stage": (0x1512C, "A9028596"),       # STAGE SELECT      -> JSR slives / NOP
     "credit_call": (0x186CC, "20F689"),
+    "title_blink": (0x186FD, "205988"),         # title loop JSR $8859 -> JSR skipsh (D-25)
     "title_bank":  (0x186C1, "A90085028503"),   # LDA #0/STA $02/STA $03 -> JSR tbanks / NOP x3         # title build: JSR $89F6 -> JSR credit (D-23)
     "credit_area": (0x18770, "A5F9F015A82910D0"),  # dead hidden-command recorder
     "snd_slide":   (0x18894, "18A5E6690185E6A5E8690029018"[:0] + "18A5E6690185E6A5E869002901"),
@@ -634,7 +635,14 @@ sndret:  JSR $E4EA             ; D-24: leaving SOUND TEST stops its sound and re
          STA $47
          JMP $E508
 credit:  JSR $89F6
-         LDA #<clist
+         JSR reopen            ; D-25: coming back from a select screen -> no PUSH START /
+         BNE cr1               ;       copyright / JALECO rows: rows 16-25 drawn blank
+         LDA #<blist
+         STA $18
+         LDA #>blist
+         STA $19
+         JSR $E683
+cr1:     LDA #<clist
          STA $18
          LDA #>clist
          STA $19
@@ -644,6 +652,18 @@ tbanks:  LDA #$00
          LDA #TBANKS
          STA $03
          RTS
+skipsh:  JSR reopen            ; D-25: PUSH START blink ($8859) only on a normal title
+         BEQ ss1
+         JMP $8859
+ss1:     RTS
+reopen:  LDA $0102             ; Z = 1 when the menu-reopen request is pending
+         CMP #MAGIC
+         BNE ro1
+         LDA $0103
+         CMP #MAGIC2
+ro1:     RTS
+blist:   .db $01,<bsrc,>bsrc,$00,$22   ; rows 16-25 ($2200), 32 x 10 of blank $FF
+bsrc:    .db $A0,$0A,$FF
 clist:   .db $01,<ctext,>ctext,CPPULO,CPPUHI
 ctext:   CTEXT
 """
@@ -670,7 +690,7 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
         if orig[off:off + len(e)] != e:
             raise SystemExit(f"menus: unexpected bytes at {name} (file ${off:05X})")
     t = credit_tiles(CREDIT_TEXT)
-    csrc = (CREDIT_SRC.replace("TBANKS", "$%02X" % TITLE_BANKS).replace("CPPULO", "$%02X" % (CREDIT_PPU & 0xFF)).replace("CPPUHI", "$%02X" % (CREDIT_PPU >> 8))
+    csrc = (CREDIT_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC).replace("TBANKS", "$%02X" % TITLE_BANKS).replace("CPPULO", "$%02X" % (CREDIT_PPU & 0xFF)).replace("CPPUHI", "$%02X" % (CREDIT_PPU >> 8))
             .replace("CTEXT", ".db " + ",".join("$%02X" % v for v in [len(t), 1] + t)))
     ccode, cl = assemble(csrc, CREDIT_ORG)
     if CREDIT_ORG + len(ccode) > CREDIT_END:
@@ -707,6 +727,7 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     put("lives_init", jsr(tl["lives0"]) + b"\xea")
     p[CREDIT_FILE:CREDIT_FILE + len(ccode)] = ccode
     put("credit_call", jsr(cl["credit"]))
+    put("title_blink", jsr(cl["skipsh"]))
     put("title_bank", jsr(cl["tbanks"]) + b"\xea" * 3)
     put("lives_cont", jsr(tl["govr"]) + b"\xea")
     put("lives_stage", jsr(sl["slives"]) + b"\xea")
