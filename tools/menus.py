@@ -395,7 +395,7 @@ TITLE_SRC = (TITLE_SRC.replace("ROW_GAME", text("GAME START")).replace("ROW_STAG
              .replace("ROW_D0", text(DIFF_NAMES[0])).replace("ROW_D1", text(DIFF_NAMES[1]))
              .replace("ROW_D2", text(DIFF_NAMES[2])).replace("ROW_D3", text(DIFF_NAMES[3]))
              .replace("ROW_D4", text(DIFF_NAMES[4]))
-             .replace("DCOL", ",".join("$%02X" % (0x20 + (31 - len(n)) // 2) for n in DIFF_NAMES))   # centred on "DIFFICULTY" / the credit line (col 15)
+             .replace("DCOL", ",".join("$%02X" % (0x20 + (30 - len(n)) // 2) for n in DIFF_NAMES))   # same centre for every name (odd [STORY] half a tile left, owner 2026-11-18)
              .replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC))
 
 # --------------------------------------------------------------------------------------------
