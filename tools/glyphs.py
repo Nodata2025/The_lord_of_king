@@ -28,6 +28,8 @@ def glyph_bitmap(ch, fpath=None):
     import endcard                      # D-22: composed end-card cells
     if endcard.is_card(ch):
         return endcard.bitmap(ch)
+    if endcard.is_eng(ch):              # D-38: the game's own English tiles
+        return endcard.eng_bitmap(ch)
     f = font(fpath)
     im = Image.new("L", (16, 16), 0)
     ImageDraw.Draw(im).text((0, Y_OFF), ch, font=f, fill=255)

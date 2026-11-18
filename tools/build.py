@@ -553,7 +553,8 @@ def main():
             if i < PTR_COUNT:
                 raise SystemExit(f"{sid}: extra entries must come after S{PTR_COUNT - 1:02d}")
             check_layout(sid, e["ko"])
-            ko[i] = e["ko"]
+            # D-38: "orig_font" = Latin letters/digits in the game's own English tiles
+            ko[i] = endcard.to_eng(e["ko"]) if e.get("orig_font") else e["ko"]
             continue
         if hashlib.sha1(src[i]).hexdigest() != e["src_sha1"]:
             raise SystemExit(f"{sid}: source hash mismatch (stale translation baseline)")

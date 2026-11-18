@@ -396,7 +396,8 @@
    "extra": true,
    "state": "needs_review",
    "note": "D-37: post-ending scene (story only), no source text",
-   "ko": "혹시나 나중에 세이브 파일을 잃어버리거나{BR}새로 시작하거든{WAIT}{PAGE}GAME START에 커서를 두고{BR}↑↑↓↓←→←→↑↑↓↓←→←→를 입력해봐{WAIT}{PAGE}그러면 좋은 일이 있을지도? Bye~{WAIT}{PAGE}{END}"
+   "ko": "혹시나 나중에 세이브 파일을 잃어버리거나{BR}새로 시작하거든{WAIT}{PAGE}GAME START에 커서를 두고{BR}↑↑↓↓←→←→↑↑↓↓←→←→를 입력해봐{WAIT}{PAGE}그러면 좋은 일이 있을지도? Bye~{WAIT}{PAGE}{END}",
+   "orig_font": true
   }
  },
  "menu": {

@@ -27,6 +27,39 @@ BRACKET_R = ["###", ".##", ".##", ".##", ".##", ".##", "###"]   # drawn at colum
 _cells = None   # list of 1-bit 8x16 images (index = code - BASE)
 _rows = None    # three strings
 _theend = None  # [THE END] row (screen row 21)
+_chr = None     # original CHR (English tiles for ENG_BASE cells)
+
+# D-38: the game's own English tiles (0-9, A-Z) as dialogue glyph cells, reached through
+# private-use characters ENG_BASE + index; ink rows 4-10 of the 8x16 cell (Hangul: 2-12)
+ENG_BASE = 0xE200
+ENG_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+ENG_Y = 4
+
+
+def to_eng(text):
+    """Digits and letters outside {CONTROL} tokens -> original-font cells (letters upper-cased)."""
+    out, depth = [], 0
+    for ch in text:
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+        elif depth == 0 and ch.upper() in ENG_CHARS and ch.isascii():
+            ch = chr(ENG_BASE + ENG_CHARS.index(ch.upper()))
+        out.append(ch)
+    return "".join(out)
+
+
+def is_eng(ch):
+    return ENG_BASE <= ord(ch) < ENG_BASE + len(ENG_CHARS)
+
+
+def eng_bitmap(ch):
+    if _chr is None:
+        raise SystemExit("endcard: CHR not set (build first)")
+    cell = Image.new("L", (8, 16), 0)
+    cell.paste(_eng_tile(_chr, ENG_CHARS[ord(ch) - ENG_BASE]).convert("L").point(lambda v: 1 if v else 0), (0, ENG_Y))
+    return cell
 
 
 def _eng_tile(chr_rom, ch):
@@ -87,7 +120,8 @@ def theend_canvas(chr_rom):
 
 
 def build(chr_rom):
-    global _cells, _rows, _theend
+    global _cells, _rows, _theend, _chr
+    _chr = chr_rom
     canvas = compose(chr_rom)
     cells, index, rows = [], {}, []
     for band in range(3):
