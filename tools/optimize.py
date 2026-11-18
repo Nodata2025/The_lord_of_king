@@ -160,6 +160,101 @@ dn9:     RTS
 """
 DIV_ORIG = bytes.fromhex("85238424A000")   # STA $23 / STY $24 / LDY #0
 
+# ---- metasprite tiles -> OAM ($EA70-$EB06; $EB07 OAM writer kept, also called from $CC69) ----
+# Every object's tiles go through $EAA9 (~200 cycles a tile: attribute and flip tests
+# recomputed per tile, a JSR to $EB07). Round 2-1 with ~10 objects spent ~12k cycles a
+# frame in the object draw ($CFBB). Same output, same tile order (even frames last tile
+# first, odd frames first tile first), same "drawn" flag ($18 bit 3); the attribute is built
+# once per object (it only depends on $18 bits 0-1 and 4-6, which the loop never changes)
+# and the flips come from it (bit 6 = H, bit 7 = V).
+SPR_ORG, SPR_END = 0xEA70, 0xEB07
+SPR_SRC = """
+         LDY #$00
+         LDA ($1D),Y           ; layout
+         ASL A
+         TAX
+         LDA $EB27,X
+         STA $1F
+         LDA $EB28,X
+         STA $20
+         LDA ($1F),Y           ; tile count
+         STA $21
+         LDA $18               ; attribute = palette | V,H,priority from $18 bits 6,5,4
+         AND #$03
+         STA $25
+         LDA $18
+         ASL A
+         AND #$E0
+         ORA $25
+         STA $25
+         LDA $F4
+         LSR A
+         BCS so
+se:      JSR st                ; even frame: tiles n..1
+         DEC $21
+         BNE se
+         BEQ sf
+so:      LDA $21               ; odd frame: tiles 1..n
+         STA $26
+         LDA #$01
+         STA $21
+so1:     JSR st
+         INC $21
+         DEC $26
+         BNE so1
+sf:      LDY #$00
+         LDA $18
+         STA ($42),Y
+         RTS
+st:      LDY $21
+         LDA ($1D),Y           ; tile
+         CMP #$FE
+         BEQ sx
+         STA $24
+         TYA
+         ASL A
+         TAY
+         DEY
+         LDX #$00
+         LDA $25
+         ASL A
+         ASL A                 ; C = H flip
+         LDA ($1F),Y           ; dx
+         BCC sh1
+         EOR #$FF
+         ADC #$00              ; -dx
+sh1:     BPL sh2
+         DEX                   ; sign extension
+sh2:     CLC
+         ADC $19
+         STA $22
+         TXA
+         ADC $1A
+         BNE sx                ; off screen
+         INY
+         LDX #$00
+         LDA $25
+         ASL A                 ; C = V flip
+         LDA ($1F),Y           ; dy
+         BCC sv1
+         EOR #$FF
+         ADC #$00
+sv1:     BPL sv2
+         DEX
+sv2:     CLC
+         ADC $1B
+         STA $23
+         TXA
+         ADC $1C
+         BNE sx
+sd:      LDA $18
+         ORA #$08
+         STA $18
+         JMP $EB07             ; OAM write (unchanged)
+sx:      RTS
+"""
+SPR_ORIG = bytes.fromhex("A000B11D0AAABD27EB851FBD28EB8520")
+
 ORIG_HEAD = bytes.fromhex("A000B15C8DA705")   # $CE71: LDY #0 / LDA ($5C),Y / STA $05A7
 
 
@@ -185,4 +280,13 @@ def apply(p, orig_p):
         raise SystemExit("optimize: divide too large (%d)" % len(dcode))
     p[dfile:dfile + len(dcode)] = dcode
     p[dfile + len(dcode):dfile + DIV_END - DIV_ORG] = b"\xea" * (DIV_END - DIV_ORG - len(dcode))
-    return {"spawner_bytes": len(code), "div_bytes": len(dcode), "div_neg_bytes": len(ncode)}
+    sfile = 0x1E000 + SPR_ORG - 0xE000
+    if orig_p[sfile:sfile + len(SPR_ORIG)] != SPR_ORIG or orig_p[0x1EB07:0x1EB0B] != bytes.fromhex("A546C940"):
+        raise SystemExit("optimize: sprite bytes differ")
+    scode, _ = assemble(SPR_SRC, SPR_ORG)
+    if SPR_ORG + len(scode) > SPR_END:
+        raise SystemExit("optimize: sprite loop too large (%d)" % len(scode))
+    p[sfile:sfile + len(scode)] = scode
+    p[sfile + len(scode):sfile + SPR_END - SPR_ORG] = b"\xea" * (SPR_END - SPR_ORG - len(scode))
+    return {"spawner_bytes": len(code), "div_bytes": len(dcode), "div_neg_bytes": len(ncode),
+            "sprite_bytes": len(scode)}
