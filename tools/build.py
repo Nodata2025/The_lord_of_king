@@ -836,6 +836,8 @@ def main():
         if orig_p[off:off + 5] != b"\xad\xd7\x03\x29\x60":
             raise SystemExit("mouth: unexpected bytes at $%05X" % off)
         p[off + 4] = 0x70
+    import optimize                     # D-39: gameplay slowdown
+    opt_report = optimize.apply(p, orig_p)
     # D-34: the text-window IRQ (scanline ~163, inside row 20) switched the $0800/$0C00 banks
     # low nibble first: for a moment the bank was (new low | old high) = a picture bank whose
     # tile $FF is not blank, and the right end of that scanline showed a coloured streak.
