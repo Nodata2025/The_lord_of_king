@@ -33,8 +33,8 @@ disp:    LDA dhi,Y
          PHA
          LDA $011D
          RTS
-dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1,<ucheat-1,<r_snd-1,<r_fade-1,<r_post-1,<r_fin-1,<r_lives-1,<r_hud-1,<r_clr-1,<r_spawn-1
-dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1,>ucheat-1,>r_snd-1,>r_fade-1,>r_post-1,>r_fin-1,>r_lives-1,>r_hud-1,>r_clr-1,>r_spawn-1
+dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1,<ucheat-1,<r_snd-1,<r_fade-1,<r_post-1,<r_fin-1,<r_lives-1,<r_hud-1,<r_clr-1,<r_spawn-1,<r_boss-1
+dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1,>ucheat-1,>r_snd-1,>r_fade-1,>r_post-1,>r_fin-1,>r_lives-1,>r_hud-1,>r_clr-1,>r_spawn-1,>r_boss-1
 ; ---- 7: SOUND TEST sound control (D-36), A = op ----
 ;   0: stop everything (entering SOUND TEST)
 ;   1: B/SELECT: sound playing -> stop it, A=0; nothing playing -> stop, title BGM 0 again,
@@ -236,7 +236,19 @@ fh0:     JMP fh3
 fh2:     LDX #$00              ; D-42: no bubble clusters (object types $1D-$20); their spawn flag stays
 fb1:     LDA $0600,X           ;  set, so they never come back
          BPL fb2
-         LDA $060E,X
+         LDA $F3               ; D-46: 5-1 purple bridge (x 2800-3372): no ordinary enemies
+         CMP #$0B              ;  (list entries 15 type $26, 22/23 $2F, 27 $30)
+         BNE fb5
+         LDA $060F,X
+         CMP #15
+         BEQ fb4
+         CMP #22
+         BEQ fb4
+         CMP #23
+         BEQ fb4
+         CMP #27
+         BEQ fb4
+fb5:     LDA $060E,X
          CMP #$10              ; D-45: 5-1's first floor tentacle (type $10 at x 960, on the
          BNE fb3               ;  small platform right after the gap: landing = hit)
          LDA $F3
@@ -417,6 +429,33 @@ rs10:    STA $011D
 rs11:    JSR $D1DA
          STA $011D
          RTS
+; ---- 15: D-46 HEAVEN OR HELL, 5-1 mid-boss (beast + eagle, type $40). It wakes ($B0CE, bank 1)
+;      only once the screen has locked at the end, by then ~70 px in front of the player and
+;      charging at 2 px/frame. Here it may also wake once the player reaches the end of the
+;      purple bridge (x >= 3360): it then starts from the right screen edge (its list x 3552).
+;      A != 0 = wake. ----
+r_boss:  LDA $48
+         AND #$20
+         BNE rb1
+         LDA $011E
+         CMP #$04
+         BNE rb0
+         LDA $F3
+         CMP #$0B
+         BNE rb0
+         LDA $6E
+         CMP #$0D
+         BCC rb0
+         BNE rb1
+         LDA $6D
+         CMP #$20
+         BCC rb0
+rb1:     LDA #$01
+         STA $011D
+         RTS
+rb0:     LDA #$00
+         STA $011D
+         RTS
 ; ---- 12: HUD row buffers at round start (was $C2A9-$C2D9, the same copies); D-42 HEAVEN OR
 ;      HELL: the "PW" label is left blank ----
 r_hud:   LDX #$7F
@@ -517,6 +556,8 @@ SITES = {
     "clr":   (0x1F1D1, "AAA9009D760560"),   # spawn flag clear      -> LDY #13 / JMP far
     "box":   (0x1EF81, "18BDAEF279AEF28526"),  # box sizes sum      -> JSR hsum / NOP x6
     "drag":  (0x01897, "A5484A900C"),       # bank 0 $9897 side      -> JSR dstub ($C2D5) / BPL $98AB
+    "bwake": (0x030CE, "A5482920"),         # bank 1 $B0CE wake test -> JSR $BFFA / NOP (BEQ kept)
+    "bstub": (0x03FFA, "FFFFFFFFFF"),       # bank 1 $BFFA (free)    -> LDY #15 / JMP far
 }
 
 # D-42: HEAVEN OR HELL weapon reach. Written into the old $C2AE-$C2D9 body of the HUD init
@@ -556,7 +597,7 @@ def apply(p, orig, fixed_start, fixed_end):
     pcode, pl = post.assemble_b11()
     xcode, xl = assemble(DIFF_SRC.replace("USTAGE", "$%04X" % UNLOCK["ustage"]), DIFF_ORG)
     ext = {"ucheat": UNLOCK["cheat"], "r_fade": pl["r_fade"], "r_post": pl["r_post"], "r_fin": pl["r_fin"]}
-    ext.update({k: xl[k] for k in ("r_dmg", "r_hp", "r_atk", "r_pw", "r_frame", "r_hit", "r_lives", "r_hud", "r_clr", "r_spawn")})
+    ext.update({k: xl[k] for k in ("r_dmg", "r_hp", "r_atk", "r_pw", "r_frame", "r_hit", "r_lives", "r_hud", "r_clr", "r_spawn", "r_boss")})
     bcode, _ = assemble(B11_SRC.replace("CHEAT", "$%04X" % UNLOCK["cheat"]), B11_ORG, ext)
     if B11_ORG + len(bcode) > 0xA200:
         raise SystemExit("difficulty: bank 11 code reaches the staff hook")
@@ -595,6 +636,8 @@ def apply(p, orig, fixed_start, fixed_end):
         raise SystemExit("difficulty: no room for the dragon stub")
     p[0x1C000 + ds - 0xC000:0x1C000 + ds - 0xC000 + 5] = b"\xa0\x0e\x4c" + w(far)
     put["drag"] = b"\x20" + w(ds) + b"\x10\x0f"   # far returns LDA $011D (0/1): N = 0
+    put["bwake"] = b"\x20\xfa\xbf\xea"            # far returns LDA $011D: Z for the BEQ
+    put["bstub"] = b"\xa0\x0f\x4c" + w(far)
     for name, b in put.items():
         off = SITES[name][0]
         p[off:off + len(b)] = b
