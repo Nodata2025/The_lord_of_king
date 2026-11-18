@@ -236,12 +236,25 @@ fh0:     JMP fh3
 fh2:     LDX #$00              ; D-42: no bubble clusters (object types $1D-$20); their spawn flag stays
 fb1:     LDA $0600,X           ;  set, so they never come back
          BPL fb2
-         LDA $060E,X           ; $1D-$20: the bubble/grape clusters (colour per round)
+         LDA $060E,X
+         CMP #$10              ; D-45: 5-1's first floor tentacle (type $10 at x 960, on the
+         BNE fb3               ;  small platform right after the gap: landing = hit)
+         LDA $F3
+         CMP #$0B
+         BNE fb2
+         LDA $0605,X
+         CMP #$C0
+         BNE fb2
+         LDA $0606,X
+         CMP #$03
+         BEQ fb4
+         BNE fb2
+fb3:     LDA $060E,X           ; $1D-$20: the bubble/grape clusters (colour per round)
          SEC
          SBC #$1D
          CMP #$04
          BCS fb2
-         LDA #$00
+fb4:     LDA #$00
          STA $0600,X
 fb2:     TXA
          CLC
