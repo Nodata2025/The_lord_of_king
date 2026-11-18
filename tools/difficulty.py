@@ -14,7 +14,7 @@ stops at $0119):
                  a - round(a/5) (= /1.25, at least 1), boss max HP x1.5 (max HP >= 40 in the
                  $D57B table), while a boss is on screen every 5th frame objects move twice.
 4 HEAVEN OR HELL 9 lives, no continue, any hit empties the player's HP, every enemy (bosses
-                 too; max HP 0 = special, kept) dies at the first hit (max HP 1).
+                 too) dies at the first hit (max HP 0; the game kills when damage > max HP).
 
 Code lives in bank 11 (all $FF in the original) and is reached through `far`: banks 10/11
 are mapped through the game's own $08/$AE pair, the same way bank 14 $D030 runs bank 4
@@ -152,10 +152,8 @@ r_hp:    LDA $060E,X
          ADC $011D
 hr:      STA $011D
          RTS
-hh:      CMP #$00              ; HEAVEN OR HELL: every enemy dies in one hit (0 = special, kept)
-         BEQ hr
-         LDA #$01
-         BNE hr
+hh:      LDA #$00              ; HEAVEN OR HELL: every enemy dies in one hit (the game kills
+         BEQ hr                ; when the damage total is MORE than max HP: max 0)
 ; ---- 2: player attack power (wraps JSR $D2F1; X = enemy, kept) ----
 r_atk:   JSR $D2F1
          LDY $011E
