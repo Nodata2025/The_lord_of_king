@@ -302,6 +302,7 @@ hoi1:    JMP $D115
     for i, (w, h) in enumerate([(10, 23), (10, 23), (21, 23), (10, 15), (14, 15), (12, 28), (14, 23), (18, 23)]):
         if i:
             p[T + 2 * i:T + 2 * i + 2] = bytes(shrink(w, h))
+    p[T + 4:T + 6] = bytes([9, 14])          # entry 2 = standing attack: 18x28 (owner 2026-11-18)
     for i in range(20):
         a = 0x64A + 4 * i + 2
         if orig_p[a] > 7:
