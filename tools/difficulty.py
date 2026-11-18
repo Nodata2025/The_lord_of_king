@@ -338,14 +338,30 @@ rc2:     AND #$7F
 ;      where the player is (3-2: landing from a pillar = death on arrival). Replaces the side
 ;      choice of their set-up (bank 0 $9897-$98AA, X = slot, returns A = facing for $0702):
 ;      vertical-scroll stages ($48 odd) start them at the list's edge (x 0 -> fly right, else
-;      fly left); others turn them toward the player ($D1DA). A small dragon starting within
-;      64 px of the player is moved: in vertical stages to the other screen edge, otherwise 96 px
-;      to the player's other side. ----
+;      fly left); others turn them toward the player ($D1DA). Small dragons ($21-$26): in
+;      vertical stages they start at the screen edge farther from the player; elsewhere one
+;      starting within 64 px of the player is moved 96 px to the player's other side. ----
 r_spawn: LDX $05A6
-         LDA $060E,X
-         CMP #$24
-         BNE rs9
-         SEC                   ; near = |player x - its x| < 64
+         LDA $060E,X           ; small dragons: types $21-$26
+         SEC
+         SBC #$21
+         CMP #$06
+         BCS rs9
+         LDA $48
+         LSR A
+         BCC rsh
+         LDA $6E               ; vertical stage: start at the screen edge farther from the
+         BNE rs9               ;  player (player x < 128 -> right edge 240, else left edge 0)
+         LDA $6D
+         BMI rs3
+         LDA #$F0
+         BNE rs4
+rs3:     LDA #$00
+rs4:     STA $0605,X
+         LDA #$00
+         STA $0606,X
+         JMP rs9
+rsh:     SEC                   ; horizontal stage: near = |player x - its x| < 64
          LDA $6D
          SBC $0605,X
          STA $011D
@@ -357,23 +373,11 @@ r_spawn: LDX $05A6
          LDA $011D
          CMP #$C0
          BCC rs9
-         BCS rs2
+         BCS rs6
 rs1:     LDA $011D
          CMP #$40
          BCS rs9
-rs2:     LDA $48
-         LSR A
-         BCC rs5
-         LDA $0605,X           ; vertical stage: other edge (0 <-> 240)
-         BEQ rs3
-         LDA #$00
-         BEQ rs4
-rs3:     LDA #$F0
-rs4:     STA $0605,X
-         JMP rs9
-rs5:     LDA $011D             ; horizontal: 96 px to the player's other side
-         BMI rs6               ; (dx >= $C0 -> it is right of the player)
-         CLC
+         CLC                   ; it was left of (or on) the player -> player x + 96
          LDA $6D
          ADC #$60
          STA $0605,X
@@ -381,7 +385,7 @@ rs5:     LDA $011D             ; horizontal: 96 px to the player's other side
          ADC #$00
          STA $0606,X
          JMP rs9
-rs6:     SEC
+rs6:     SEC                   ; it was right of the player -> player x - 96
          LDA $6D
          SBC #$60
          STA $0605,X
