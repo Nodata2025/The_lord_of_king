@@ -309,6 +309,14 @@ hoi1:    JMP $D115
             raise SystemExit("optimize: pose table differs")
         if orig_p[a] == 0:
             p[a] = 1
+    # D-47 (every difficulty): doors (object type $01, bank 1 $A0BB) took 64 frames of holding
+    # Up (about 1.5 s with the fade) before the player went through. Now a press of Up ($F9,
+    # newly pressed, instead of $FB, held) goes through at once; holding Up no longer bounces
+    # the player straight back through the door at the other end.
+    if orig_p[0x20C3:0x20C5] != bytes([0xA5, 0xFB]) or orig_p[0x20CF:0x20D1] != bytes([0xC9, 0x40]):
+        raise SystemExit("optimize: door bytes differ")
+    p[0x20C4] = 0xF9
+    p[0x20D0] = 0x01
     # D-40 flicker: the player first in every frame. $CFC1 "LDA $F4 / LSR / BCS odd / JSR $D890"
     # becomes "JSR $D890 / LDA $F4 / LSR / BCS odd" (same 8 bytes) and the odd path's closing
     # "JMP $D890" an RTS: odd frames drew the enemies first and the player last, so on crowded
