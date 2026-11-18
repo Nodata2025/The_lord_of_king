@@ -10,7 +10,8 @@ The rewrite (same results, same order: from the last entry down, first match wit
 "already spawned" flag wins, one spawn per frame) rejects an entry with one AND/CMP on the
 low nibble of its position byte (1 in 16 pass), checks the high nibble against both
 columns, then the spawned flag, and decodes the fields only for the entry that spawns.
-ZP $24-$26 are scratch here (the sprite builder uses them the same way; NMI/IRQ do not).
+($5E/$5F, the old +1 copy of the list pointer, is no longer written: only this routine
+used it.) ZP $24-$26 are scratch here (the sprite builder uses them the same way; NMI/IRQ do not).
 """
 import os
 import sys
@@ -23,35 +24,29 @@ FILE = 0x1C000 + ORG - 0xC000      # bank 14 (fixed at $C000)
 
 SRC = """
          LDY #$00
-         LDA ($5C),Y           ; last entry index
+         LDA ($5C),Y           ; last entry index (entries follow at ($5C)+1)
          STA $05A7
-         CLC
-         LDA $5C
-         ADC #$01
-         STA $5E
-         LDA $5D
-         ADC #$00
-         STA $5F
          LDA $0556             ; column low nibble (in bits 4-7)
          LSR A
          LSR A
          LSR A
          LSR A
          STA $24
-         LDA $48               ; axis: byte 0 (horizontal) or 1 (vertical)
-         AND #$01
-         STA $25
          LDX $4A               ; second column: $4A or $4E ($0557 = it + 1)
-         TAY
-         BEQ ax
+         LDA $48               ; axis: byte 0 (horizontal) or 1 (vertical)
+         LSR A
+         BCC ax
          LDX $4E
 ax:      STX $26
+         LDA #$01              ; $25 = 1 + axis = offset of the position byte from ($5C)+4i
+         ADC #$00
+         STA $25
 lp:      LDA $05A7
          ASL A
          ASL A
          ORA $25
          TAY
-         LDA ($5E),Y
+         LDA ($5C),Y
          TAX
          AND #$0F
          CMP $24
@@ -72,13 +67,14 @@ hit:     LDA $05A7
          ASL A
          ASL A
          TAY
+         INY
          JSR dec
          JSR $CF1A             ; spawn (unchanged)
          JMP $E475
 nx:      DEC $05A7
          BPL lp
          JMP $E475
-dec:     LDA ($5E),Y           ; byte 0 -> $055B (high nibble), $055A (low nibble << 4)
+dec:     LDA ($5C),Y           ; byte 0 -> $055B (high nibble), $055A (low nibble << 4)
          PHA
          LSR A
          LSR A
@@ -92,7 +88,7 @@ dec:     LDA ($5E),Y           ; byte 0 -> $055B (high nibble), $055A (low nibbl
          ASL A
          STA $055A
          INY
-         LDA ($5E),Y           ; byte 1 -> $055D / $055C
+         LDA ($5C),Y           ; byte 1 -> $055D / $055C
          PHA
          LSR A
          LSR A
@@ -106,10 +102,10 @@ dec:     LDA ($5E),Y           ; byte 0 -> $055B (high nibble), $055A (low nibbl
          ASL A
          STA $055C
          INY
-         LDA ($5E),Y
+         LDA ($5C),Y
          STA $055F
          INY
-         LDA ($5E),Y
+         LDA ($5C),Y
          STA $055E
          RTS
 """
@@ -272,6 +268,14 @@ def apply(p, orig_p):
     if neg_org + len(ncode) > END:
         raise SystemExit("optimize: no room for the divide's negative path")
     p[FILE + len(code):FILE + len(code) + len(ncode)] = ncode
+    # D-40 flicker: the player first in every frame. $CFC1 "LDA $F4 / LSR / BCS odd / JSR $D890"
+    # becomes "JSR $D890 / LDA $F4 / LSR / BCS odd" (same 8 bytes) and the odd path's closing
+    # "JMP $D890" an RTS: odd frames drew the enemies first and the player last, so on crowded
+    # lines the player was the one dropped, and enemies covered him every other frame.
+    if orig_p[0x1CFC1:0x1CFC9] != bytes.fromhex("A5F44AB02220 90D8".replace(" ", "")) or orig_p[0x1D008:0x1D00B] != bytes.fromhex("4C90D8"):
+        raise SystemExit("optimize: object draw order bytes differ")
+    p[0x1CFC1:0x1CFC9] = bytes.fromhex("2090D8A5F44AB01F")
+    p[0x1D008:0x1D00B] = bytes([0x60, 0xEA, 0xEA])
     dfile = 0x1E000 + DIV_ORG - 0xE000
     if orig_p[dfile:dfile + 6] != DIV_ORIG or orig_p[dfile + DIV_END - DIV_ORG - 1] != 0x60:
         raise SystemExit("optimize: divide bytes differ")
