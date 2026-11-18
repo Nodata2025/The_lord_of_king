@@ -33,8 +33,8 @@ disp:    LDA dhi,Y
          PHA
          LDA $011D
          RTS
-dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1,<ucheat-1,<r_snd-1,<r_fade-1,<r_post-1,<r_fin-1,<r_lives-1,<r_hud-1,<r_clr-1
-dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1,>ucheat-1,>r_snd-1,>r_fade-1,>r_post-1,>r_fin-1,>r_lives-1,>r_hud-1,>r_clr-1
+dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1,<ucheat-1,<r_snd-1,<r_fade-1,<r_post-1,<r_fin-1,<r_lives-1,<r_hud-1,<r_clr-1,<r_spawn-1
+dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1,>ucheat-1,>r_snd-1,>r_fade-1,>r_post-1,>r_fin-1,>r_lives-1,>r_hud-1,>r_clr-1,>r_spawn-1
 ; ---- 7: SOUND TEST sound control (D-36), A = op ----
 ;   0: stop everything (entering SOUND TEST)
 ;   1: B/SELECT: sound playing -> stop it, A=0; nothing playing -> stop, title BGM 0 again,
@@ -334,6 +334,72 @@ rcol:    LDA $48               ; the scroll column the spawner compares ($CE81)
          LDA $4E
 rc2:     AND #$7F
          RTS
+; ---- 14: D-44 (every difficulty) small dragons (object type $24, 3-2 etc.) could start right
+;      where the player is (3-2: landing from a pillar = death on arrival). Replaces the side
+;      choice of their set-up (bank 0 $9897-$98AA, X = slot, returns A = facing for $0702):
+;      vertical-scroll stages ($48 odd) start them at the list's edge (x 0 -> fly right, else
+;      fly left); others turn them toward the player ($D1DA). A small dragon starting within
+;      64 px of the player is moved: in vertical stages to the other screen edge, otherwise 96 px
+;      to the player's other side. ----
+r_spawn: LDX $05A6
+         LDA $060E,X
+         CMP #$24
+         BNE rs9
+         SEC                   ; near = |player x - its x| < 64
+         LDA $6D
+         SBC $0605,X
+         STA $011D
+         LDA $6E
+         SBC $0606,X
+         BEQ rs1
+         CMP #$FF
+         BNE rs9
+         LDA $011D
+         CMP #$C0
+         BCC rs9
+         BCS rs2
+rs1:     LDA $011D
+         CMP #$40
+         BCS rs9
+rs2:     LDA $48
+         LSR A
+         BCC rs5
+         LDA $0605,X           ; vertical stage: other edge (0 <-> 240)
+         BEQ rs3
+         LDA #$00
+         BEQ rs4
+rs3:     LDA #$F0
+rs4:     STA $0605,X
+         JMP rs9
+rs5:     LDA $011D             ; horizontal: 96 px to the player's other side
+         BMI rs6               ; (dx >= $C0 -> it is right of the player)
+         CLC
+         LDA $6D
+         ADC #$60
+         STA $0605,X
+         LDA $6E
+         ADC #$00
+         STA $0606,X
+         JMP rs9
+rs6:     SEC
+         LDA $6D
+         SBC #$60
+         STA $0605,X
+         LDA $6E
+         SBC #$00
+         STA $0606,X
+rs9:     LDA $48               ; the original side choice
+         LSR A
+         BCC rs11
+         LDA #$01
+         LDY $0605,X
+         BEQ rs10
+         LDA #$00
+rs10:    STA $011D
+         RTS
+rs11:    JSR $D1DA
+         STA $011D
+         RTS
 ; ---- 12: HUD row buffers at round start (was $C2A9-$C2D9, the same copies); D-42 HEAVEN OR
 ;      HELL: the "PW" label is left blank ----
 r_hud:   LDX #$7F
@@ -433,6 +499,7 @@ SITES = {
     "hud":   (0x1C2A9, "A27FA9FF9D5603"),   # HUD buffers init      -> LDY #12 / JMP far
     "clr":   (0x1F1D1, "AAA9009D760560"),   # spawn flag clear      -> LDY #13 / JMP far
     "box":   (0x1EF81, "18BDAEF279AEF28526"),  # box sizes sum      -> JSR hsum / NOP x6
+    "drag":  (0x01897, "A5484A900C"),       # bank 0 $9897 side      -> JSR dstub ($C2D5) / BPL $98AB
 }
 
 # D-42: HEAVEN OR HELL weapon reach. Written into the old $C2AE-$C2D9 body of the HUD init
@@ -472,7 +539,7 @@ def apply(p, orig, fixed_start, fixed_end):
     pcode, pl = post.assemble_b11()
     xcode, xl = assemble(DIFF_SRC.replace("USTAGE", "$%04X" % UNLOCK["ustage"]), DIFF_ORG)
     ext = {"ucheat": UNLOCK["cheat"], "r_fade": pl["r_fade"], "r_post": pl["r_post"], "r_fin": pl["r_fin"]}
-    ext.update({k: xl[k] for k in ("r_dmg", "r_hp", "r_atk", "r_pw", "r_frame", "r_hit", "r_lives", "r_hud", "r_clr")})
+    ext.update({k: xl[k] for k in ("r_dmg", "r_hp", "r_atk", "r_pw", "r_frame", "r_hit", "r_lives", "r_hud", "r_clr", "r_spawn")})
     bcode, _ = assemble(B11_SRC.replace("CHEAT", "$%04X" % UNLOCK["cheat"]), B11_ORG, ext)
     if B11_ORG + len(bcode) > 0xA200:
         raise SystemExit("difficulty: bank 11 code reaches the staff hook")
@@ -506,6 +573,11 @@ def apply(p, orig, fixed_start, fixed_end):
         raise SystemExit("difficulty: hsum does not fit")
     p[0x1C000 + HSUM_ORG - 0xC000:0x1C000 + HSUM_ORG - 0xC000 + len(hcode)] = hcode
     put["box"] = b"\x20" + w(hl["hsum"]) + b"\xea" * 6
+    ds = HSUM_ORG + len(hcode)                # 5 bytes left before $C2DA: LDY #14 / JMP far
+    if ds + 5 > HSUM_END:
+        raise SystemExit("difficulty: no room for the dragon stub")
+    p[0x1C000 + ds - 0xC000:0x1C000 + ds - 0xC000 + 5] = b"\xa0\x0e\x4c" + w(far)
+    put["drag"] = b"\x20" + w(ds) + b"\x10\x0f"   # far returns LDA $011D (0/1): N = 0
     for name, b in put.items():
         off = SITES[name][0]
         p[off:off + len(b)] = b
