@@ -198,7 +198,20 @@ pl:      STA $0360,X
          BPL pl
 pr:      RTS
 ; ---- 4: once per gameplay frame (before JSR $CFBB) ----
-r_frame: LDA $011E             ; D-42 HEAVEN OR HELL: no PW gauge (empty, max 0, not drawn)
+r_frame: LDX #$00              ; D-43 (every difficulty): the mid-boss sparks (object type $0A,
+fs1:     LDA $0600,X           ;  3-1 / 6-2) never set a box size, so they collided with the
+         BPL fs2               ;  default 20x46 box; give them their 8x8 picture size ($0A)
+         LDA $060E,X
+         CMP #$0A
+         BNE fs2
+         LDA #$0A
+         STA $070B,X
+fs2:     TXA
+         CLC
+         ADC #$10
+         TAX
+         BNE fs1
+         LDA $011E             ; D-42 HEAVEN OR HELL: no PW gauge (empty, max 0, not drawn)
          CMP #$04
          BNE fh0
          LDA #$00

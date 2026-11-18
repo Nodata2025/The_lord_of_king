@@ -290,6 +290,24 @@ hoi1:    JMP $D115
     if orig_p[0x1DD7:0x1DDB] != bytes.fromhex("2015D1B0"):
         raise SystemExit("optimize: container state bytes differ")
     p[0x1DD7:0x1DDA] = bytes([0x20, il["hoi"] & 0xFF, il["hoi"] >> 8])
+    # D-43 (every difficulty): smaller player hurt box. The player's box sizes (bank 0 pose
+    # table $864A, byte 2) use $F2AE entries 0-7; entries 1-7 belong to the player only, entry 0
+    # is also the default of many objects. Entries 1-7 shrink to about x0.7 wide / x0.6 tall
+    # (centre kept) and the poses on entry 0 move to entry 1.
+    T = 0x1F2AE
+    if orig_p[T:T + 16] != bytes([10,23,10,24,21,23,10,15,14,15,12,28,14,23,18,23]):
+        raise SystemExit("optimize: box size table differs")
+    def shrink(w, h):
+        return w - (w >> 2) - (w >> 3), h - (h >> 1) + (h >> 3)
+    for i, (w, h) in enumerate([(10, 23), (10, 23), (21, 23), (10, 15), (14, 15), (12, 28), (14, 23), (18, 23)]):
+        if i:
+            p[T + 2 * i:T + 2 * i + 2] = bytes(shrink(w, h))
+    for i in range(20):
+        a = 0x64A + 4 * i + 2
+        if orig_p[a] > 7:
+            raise SystemExit("optimize: pose table differs")
+        if orig_p[a] == 0:
+            p[a] = 1
     # D-40 flicker: the player first in every frame. $CFC1 "LDA $F4 / LSR / BCS odd / JSR $D890"
     # becomes "JSR $D890 / LDA $F4 / LSR / BCS odd" (same 8 bytes) and the odd path's closing
     # "JMP $D890" an RTS: odd frames drew the enemies first and the player last, so on crowded
