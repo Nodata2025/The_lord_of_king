@@ -33,8 +33,8 @@ disp:    LDA dhi,Y
          PHA
          LDA $011D
          RTS
-dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1,<ucheat-1,<r_snd-1,<r_fade-1,<r_post-1,<r_fin-1,<r_lives-1,<r_hud-1
-dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1,>ucheat-1,>r_snd-1,>r_fade-1,>r_post-1,>r_fin-1,>r_lives-1,>r_hud-1
+dlo:     .db <r_dmg-1,<r_hp-1,<r_atk-1,<r_pw-1,<r_frame-1,<r_hit-1,<ucheat-1,<r_snd-1,<r_fade-1,<r_post-1,<r_fin-1,<r_lives-1,<r_hud-1,<r_clr-1
+dhi:     .db >r_dmg-1,>r_hp-1,>r_atk-1,>r_pw-1,>r_frame-1,>r_hit-1,>ucheat-1,>r_snd-1,>r_fade-1,>r_post-1,>r_fin-1,>r_lives-1,>r_hud-1,>r_clr-1
 ; ---- 7: SOUND TEST sound control (D-36), A = op ----
 ;   0: stop everything (entering SOUND TEST)
 ;   1: B/SELECT: sound playing -> stop it, A=0; nothing playing -> stop, title BGM 0 again,
@@ -208,7 +208,7 @@ r_frame: LDA $011E             ; D-42 HEAVEN OR HELL: no PW gauge (empty, max 0,
          STA $8E
          LDA $035E             ; "PW" label still in the HUD row buffer: blank label + gauge
          CMP #$FF
-         BEQ fh0
+         BEQ fh2
          LDX #$15
          LDA #$FF
 fh1:     STA $035E,X
@@ -218,7 +218,34 @@ fh1:     STA $035E,X
          AND #$F0
          ORA #$40
          STA $034D
-fh0:     JSR USTAGE             ; D-29: the round being played unlocks its STAGE entry
+         JMP fh2
+fh0:     JMP fh3
+fh2:     LDX #$00              ; D-42: no blue bubbles (object type $1F); their spawn flag stays
+fb1:     LDA $0600,X           ;  set, so they never come back
+         BPL fb2
+         LDA $060E,X
+         CMP #$1F
+         BNE fb2
+         LDA #$00
+         STA $0600,X
+fb2:     TXA
+         CLC
+         ADC #$10
+         TAX
+         BNE fb1
+         JSR rcol              ; re-arm spawn entries deleted off screen (flag = column | $80)
+         STA $011D             ;  once the scroll column has changed
+         LDX #$2F
+fa1:     LDA $0576,X
+         BPL fa2
+         AND #$7F
+         CMP $011D
+         BEQ fa2
+         LDA #$00
+         STA $0576,X
+fa2:     DEX
+         BPL fa1
+fh3:     JSR USTAGE             ; D-29: the round being played unlocks its STAGE entry
          LDA #$00
          STA $011C
          LDA $011E
@@ -272,6 +299,26 @@ r_lives: LDY $011E
          STA $96
          RTS
 ltab:    .db $09,$02,$02,$05,$09
+; ---- 13: spawn flag of an object deleted off screen (was $F1D1: A = entry, flag = 0 ->
+;      the entry spawns again when its column is at the screen edge). D-42 HEAVEN OR HELL:
+;      flag = column | $80, cleared by r_frame only after the column has changed, so standing
+;      at an edge no longer brings the same enemy back forever. ----
+r_clr:   TAX
+         LDA #$00
+         LDY $011E
+         CPY #$04
+         BNE rc1
+         JSR rcol
+         ORA #$80
+rc1:     STA $0576,X
+         RTS
+rcol:    LDA $48               ; the scroll column the spawner compares ($CE81)
+         LSR A
+         LDA $4A
+         BCC rc2
+         LDA $4E
+rc2:     AND #$7F
+         RTS
 ; ---- 12: HUD row buffers at round start (was $C2A9-$C2D9, the same copies); D-42 HEAVEN OR
 ;      HELL: the "PW" label is left blank ----
 r_hud:   LDX #$7F
@@ -369,7 +416,37 @@ SITES = {
     "hit":   (0x00455, "A9008578"),         # hurt start            -> JMP hst
     "vel":   (0x1E9A7, "A9048518"),         # object move           -> JMP vh / NOP
     "hud":   (0x1C2A9, "A27FA9FF9D5603"),   # HUD buffers init      -> LDY #12 / JMP far
+    "clr":   (0x1F1D1, "AAA9009D760560"),   # spawn flag clear      -> LDY #13 / JMP far
+    "box":   (0x1EF81, "18BDAEF279AEF28526"),  # box sizes sum      -> JSR hsum / NOP x6
 }
+
+# D-42: HEAVEN OR HELL weapon reach. Written into the old $C2AE-$C2D9 body of the HUD init
+# (moved to bank 11, r_hud); the $C2DA tables after it stay. The box test $EF4D adds the two
+# half sizes from $F2AE; when the second box is the weapon ($1E/$1F = $05F0, $DA92) a quarter
+# of the weapon's half size is added (x 1.25 in both axes).
+HSUM_ORG, HSUM_END = 0xC2AE, 0xC2DA
+HSUM_SRC = """
+hsum:    CLC
+         LDA $F2AE,X
+         ADC $F2AE,Y
+         STA $26
+         LDA $1E
+         CMP #$F0
+         BNE hx
+         LDA $1F
+         CMP #$05
+         BNE hx
+         LDA $011E
+         CMP #$04
+         BNE hx
+         LDA $F2AE,Y
+         LSR A
+         LSR A
+         CLC
+         ADC $26
+         STA $26
+hx:      RTS
+"""
 
 
 def apply(p, orig, fixed_start, fixed_end):
@@ -380,7 +457,7 @@ def apply(p, orig, fixed_start, fixed_end):
     pcode, pl = post.assemble_b11()
     xcode, xl = assemble(DIFF_SRC.replace("USTAGE", "$%04X" % UNLOCK["ustage"]), DIFF_ORG)
     ext = {"ucheat": UNLOCK["cheat"], "r_fade": pl["r_fade"], "r_post": pl["r_post"], "r_fin": pl["r_fin"]}
-    ext.update({k: xl[k] for k in ("r_dmg", "r_hp", "r_atk", "r_pw", "r_frame", "r_hit", "r_lives", "r_hud")})
+    ext.update({k: xl[k] for k in ("r_dmg", "r_hp", "r_atk", "r_pw", "r_frame", "r_hit", "r_lives", "r_hud", "r_clr")})
     bcode, _ = assemble(B11_SRC.replace("CHEAT", "$%04X" % UNLOCK["cheat"]), B11_ORG, ext)
     if B11_ORG + len(bcode) > 0xA200:
         raise SystemExit("difficulty: bank 11 code reaches the staff hook")
@@ -407,7 +484,13 @@ def apply(p, orig, fixed_start, fixed_end):
         "hit":   b"\x4c" + w(kl["hst"]),
         "vel":   b"\x4c" + w(kl["vh"]) + b"\xea",
         "hud":   b"\xa0\x0c\x4c" + w(far),
+        "clr":   b"\xa0\x0d\x4c" + w(far) + b"\xea\xea",
     }
+    hcode, hl = assemble(HSUM_SRC, HSUM_ORG)
+    if HSUM_ORG + len(hcode) > HSUM_END:
+        raise SystemExit("difficulty: hsum does not fit")
+    p[0x1C000 + HSUM_ORG - 0xC000:0x1C000 + HSUM_ORG - 0xC000 + len(hcode)] = hcode
+    put["box"] = b"\x20" + w(hl["hsum"]) + b"\xea" * 6
     for name, b in put.items():
         off = SITES[name][0]
         p[off:off + len(b)] = b
