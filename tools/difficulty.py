@@ -219,8 +219,9 @@ fs2:     TXA
          STA $89
          STA $8D
          STA $8E
-         LDA $035E             ; "PW" label still in the HUD row buffer: blank label + gauge
-         CMP #$FF
+         LDA $035E             ; "PW" label or a gauge tile still in the HUD row buffer
+         AND $0360             ;  (a frame where the gauge max was set before this ran):
+         CMP #$FF              ;  blank label + gauge
          BEQ fh2
          LDX #$15
          LDA #$FF
