@@ -158,7 +158,11 @@ hh:      LDA #$00              ; HEAVEN OR HELL: every enemy dies in one hit (th
 r_atk:   JSR $D2F1
          LDY $011E
          BEQ as
-         CPY #$03
+         CPY #$04              ; HEAVEN OR HELL: maximum damage on every hit (D-42)
+         BNE ah
+         LDA #$7F
+         BNE ar
+ah:      CPY #$03
          BNE ar
          STA $011D             ; HARD: a - round(a / 5) (= a / 1.25, at least 1)
          CLC
