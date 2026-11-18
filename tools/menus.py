@@ -24,6 +24,9 @@ def row(s, cells=18):
     return text(("   " + s).ljust(cells)[:cells])
 
 
+# D-41 difficulty names (title row 25, centred). Room in bank 13: the menu rows are no longer
+# padded to 18 cells (bank 12 $FF runs are title-screen data, not free: QA 2026-11-18).
+DIFF_NAMES = ["[STORY]", "[EASY]", "[NORMAL]", "[HARD]", "[HEAVEN OR HELL]"]
 FADE = 0                # D-32: bank 3 fade-out entry (X = mode), set by build.py
 UNLOCK = {}             # D-29: tools/unlock.py labels, set by build.py
 MAGIC = "$A5"          # $0102 = $A5, $0103 = $5A: "reopen the menu", $0104 level, $0105 cursor
@@ -35,13 +38,13 @@ TITLE_ORG = 0xBC40
 TITLE_SRC = """
 ; ---- title menu: called from bank 12 $8718 (was JSR $878A, the hidden-command check) ------
 ; RAM $0100 cursor, $0101 level (0 main, 1 omake); $0102-$0105 reopen request
-tmenu:   LDA $011E             ; D-17 difficulty: 0 EASY, 1 NORMAL, 2 HARD; $011F = $011E ^ $5A
-         CMP #$03
+tmenu:   LDA $011E             ; D-41 difficulty: 0 STORY 1 EASY 2 NORMAL 3 HARD 4 HEAVEN OR HELL
+         CMP #$05              ;       $011F = $011E ^ $5A
          BCS tdfix
          EOR #$5A
          CMP $011F
          BEQ tdok
-tdfix:   LDA #$01              ; power-on garbage -> NORMAL
+tdfix:   LDA #$02              ; power-on garbage -> NORMAL
          STA $011E
          EOR #$5A
          STA $011F
@@ -131,7 +134,7 @@ tsel:    LDA $F9
          LDA $0100
          CMP #$03
          BNE tsel0
-         LDA $F9               ; left = easier, right = harder (stops at EASY / HARD)
+         LDA $F9               ; left = easier, right = harder (stops at STORY / HEAVEN OR HELL)
          AND #$01
          BNE tdinc
          LDA $011E
@@ -153,7 +156,7 @@ tsel0:   LDA $F9
          STA $0563
 tgo:     JMP tleave
 tdinc:   LDA $011E
-         CMP #$02
+         CMP #$04
          BCS tnext
          INC $011E
 tdset:   LDA $011E
@@ -220,11 +223,22 @@ drawlvl: LDA $0101
          LDY #>m2
          LDX #$02
          JSR qrow
-drawdif: LDX $011E
+drawdif: LDA #<dlab            ; D-41: "DIFFICULTY" on the menu row, the level centred on row 25
+         LDY #>dlab
+         LDX #$03
+         JSR qrow
+         LDA #<bl
+         LDY #>bl
+         LDX #$04
+         JSR qrow
+         LDX $011E
+         LDA dcol,X
+         STA $18
+         LDA #$23
+         STA $19
          LDA dtlo,X
          LDY dthi,X
-         LDX #$03
-         JMP qrow
+         JMP qput
 dlo:     LDA #<o0
          LDY #>o0
          LDX #$00
@@ -240,6 +254,10 @@ dlo:     LDA #<o0
          LDA #<bl
          LDY #>bl
          LDX #$03
+         JSR qrow
+         LDA #<bl
+         LDY #>bl
+         LDX #$04
 qrow:    PHA
          LDA rowlo,X
          STA $18
@@ -262,13 +280,13 @@ tlv:     TXA
          PLA
          TAX
          INX
-         CPX #$04
+         CPX #$05
          BCC tlv
          RTS
 ; ---- D-17 lives: game start (bank 12 $8A7A) and continue (bank 12 $8CCB) -----------------
-govr:    LDA $011E
-         CMP #$02
-         BEQ gohard
+govr:    LDA $011E             ; D-41: HARD and HEAVEN OR HELL have no continue
+         CMP #$03
+         BCS gohard
          JMP LIVES0
 gohard:
          LDA #$00              ; HARD: no continue, back to the opening
@@ -347,11 +365,12 @@ sn4:     STA $F9
 snx:     JMP snd
 clrlo:   .db $00,$20,$40,$60,$80,$A0,$C0,$E0,$00,$20
 clrhi:   .db $22,$22,$22,$22,$22,$22,$22,$22,$23,$23
-rowlo:   .db $27,$67,$A7,$EA
-rowhi:   .db $22,$22,$22,$22
+rowlo:   .db $2A,$6A,$AA,$EA,$27
+rowhi:   .db $22,$22,$22,$22,$23
 cury:    .db $87,$97,$A7,$B7
-dtlo:    .db <d0,<d1,<d2
-dthi:    .db >d0,>d1,>d2
+dtlo:    .db <d0,<d1,<d2,<d3,<d4
+dthi:    .db >d0,>d1,>d2,>d3,>d4
+dcol:    .db DCOL
 spal:    .db 3,1,$16,$27,$30
 m0:      ROW_GAME
 m1:      ROW_STAGE
@@ -359,17 +378,24 @@ m2:      ROW_OMAKE
 o0:      ROW_SOUND
 o1:      ROW_DEMO
 bl:      ROW_BLANK
-d0:      ROW_DEASY
-d1:      ROW_DNORMAL
-d2:      ROW_DHARD
+dlab:    ROW_DLAB
+d0:      ROW_D0
+d1:      ROW_D1
+d2:      ROW_D2
+d3:      ROW_D3
+d4:      ROW_D4
 """
 
-TITLE_SRC = (TITLE_SRC.replace("ROW_GAME", row("GAME START")).replace("ROW_STAGE", row("STAGE SELECT"))
-             .replace("ROW_OMAKE", row("OMAKE MODE")).replace("ROW_SOUND", row("SOUND TEST"))
-             .replace("ROW_DEMO", row("DEMO SELECT")).replace("ROW_BLANK", row("", 19))
-             .replace("ROW_DEASY", text("DIFFICULTY [EASY]  "))
-             .replace("ROW_DNORMAL", text("DIFFICULTY [NORMAL]"))
-             .replace("ROW_DHARD", text("DIFFICULTY [HARD]  "))
+# rows start at column 10 without padding: a level switch writes each row over one at least as
+# long (GAME START/SOUND TEST, STAGE SELECT/DEMO SELECT + 1 space), rows 2-4 are blanked
+TITLE_SRC = (TITLE_SRC.replace("ROW_GAME", text("GAME START")).replace("ROW_STAGE", text("STAGE SELECT"))
+             .replace("ROW_OMAKE", text("OMAKE MODE")).replace("ROW_SOUND", text("SOUND TEST"))
+             .replace("ROW_DEMO", text("DEMO SELECT ")).replace("ROW_BLANK", row("", 19))
+             .replace("ROW_DLAB", text("DIFFICULTY"))
+             .replace("ROW_D0", text(DIFF_NAMES[0])).replace("ROW_D1", text(DIFF_NAMES[1]))
+             .replace("ROW_D2", text(DIFF_NAMES[2])).replace("ROW_D3", text(DIFF_NAMES[3]))
+             .replace("ROW_D4", text(DIFF_NAMES[4]))
+             .replace("DCOL", ",".join("$%02X" % (0x20 + (31 - len(n)) // 2) for n in DIFF_NAMES))   # centred on "DIFFICULTY" / the credit line (col 15)
              .replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC))
 
 # --------------------------------------------------------------------------------------------
@@ -535,14 +561,8 @@ dtbl:    .db DTBL
 SLIST
 DLIST
 ; ---- D-17 lives on STAGE SELECT start (bank 10 $912C) ----
-slives:  LDA $011E
-         BNE sl2
-         LDA #$09
-         STA $96
-         RTS
-sl2:     LDA #$02
-         STA $96
-         RTS
+slives:  LDY #$0B              ; D-41 lives by difficulty (bank 11 r_lives)
+         JMP FAR
 """
 
 _se, _sb = _list("STAGE SELECT", STAGES, 5, 19)
@@ -690,12 +710,8 @@ TITLE_BANKS = 0xFE
 # unused by the snd_slide patch, D-16) to make room in bank 13.
 LIVES0_ORG, LIVES0_FILE = 0x88A1, 0x188A1
 LIVES0_SRC = """
-lives0:  LDA #$02
-         LDY $011E
-         BNE lv2
-         LDA #$09              ; EASY: 9 lives
-lv2:     STA $96
-         RTS
+lives0:  LDY #$0B              ; D-41 lives by difficulty (bank 11 r_lives)
+         JMP FAR
 """
 
 
@@ -739,18 +755,19 @@ def apply(p, orig, fixed_free_start, fixed_free_end, bank13_free_end, bank10_fre
     ccode, cl = assemble(csrc, CREDIT_ORG)
     if CREDIT_ORG + len(ccode) > CREDIT_END:
         raise SystemExit("menus: credit code too large")
-    lcode, ll = assemble(LIVES0_SRC, LIVES0_ORG)
-    if len(lcode) > 12 or orig[LIVES0_FILE:LIVES0_FILE + 12] != bytes.fromhex("85E8200 8E42078E3A5E8F0E7".replace(" ", "")):
-        raise SystemExit("menus: lives0 area")
-    p[LIVES0_FILE:LIVES0_FILE + len(lcode)] = lcode
     dcode0, _ = assemble(DRET_SRC.replace("MAGIC2", MAGIC2).replace("MAGIC", MAGIC).replace("TBANKS", "$%02X" % TITLE_BANKS).replace("FADE", "$%04X" % FADE),
                          fixed_free_start)
     far = fixed_free_start + len(dcode0)        # difficulty.FIXED_SRC starts with far
+    lcode, ll = assemble(LIVES0_SRC.replace("FAR", "$%04X" % far), LIVES0_ORG)
+    if len(lcode) > 12 or orig[LIVES0_FILE:LIVES0_FILE + 12] != bytes.fromhex("85E8200 8E42078E3A5E8F0E7".replace(" ", "")):
+        raise SystemExit("menus: lives0 area")
+    p[LIVES0_FILE:LIVES0_FILE + len(lcode)] = lcode
+    p[LIVES0_FILE + len(lcode):LIVES0_FILE + 12] = b"\xea" * (12 - len(lcode))
     tcode, tl = assemble(TITLE_SRC.replace("LIVES0", "$%04X" % ll["lives0"]).replace("FAR", "$%04X" % far),
                          TITLE_ORG, {"sndret": cl["sndret"]})
     if TITLE_ORG + len(tcode) > bank13_free_end + 1:
         raise SystemExit("menus: bank 13 code too large by %d" % (TITLE_ORG + len(tcode) - bank13_free_end - 1))
-    ss = SEL_SRC
+    ss = SEL_SRC.replace("FAR", "$%04X" % far)
     for k, v in (("SELFIX", "selfix"), ("SELCHK", "selchk"), ("LOCKS", "lockS"), ("LOCKD", "lockD")):
         ss = ss.replace(k, "$%04X" % UNLOCK[v])
     scode, sl = assemble(ss, SEL_ORG)

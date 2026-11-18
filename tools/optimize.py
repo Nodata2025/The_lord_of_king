@@ -268,6 +268,28 @@ def apply(p, orig_p):
     if neg_org + len(ncode) > END:
         raise SystemExit("optimize: no room for the divide's negative path")
     p[FILE + len(code):FILE + len(code) + len(ncode)] = ncode
+    # D-42: HEAVEN OR HELL has no items and no item containers. An item (a broken container's prize, bank 0 $9E2B
+    # state) checks "off screen?" ($D115, C=1 -> deleted at $9E0D) every frame before it is
+    # drawn or touched; in that mode the check always answers "off screen".
+    it_org = neg_org + len(ncode)
+    icode, il = assemble("""
+hoi:     LDA $011E
+         CMP #$04
+         BCC hoi1
+         RTS
+hoi1:    JMP $D115
+""", it_org)
+    if it_org + len(icode) > END:
+        raise SystemExit("optimize: no room for the item hook")
+    p[FILE + it_org - ORG:FILE + it_org - ORG + len(icode)] = icode
+    if orig_p[0x1E2F:0x1E32] != bytes.fromhex("2015D1") or orig_p[0x1E32] != 0xB0:
+        raise SystemExit("optimize: item state bytes differ")
+    p[0x1E2F:0x1E32] = bytes([0x20, il["hoi"] & 0xFF, il["hoi"] >> 8])
+    # ...and the container (pillar) itself: its idle state ($9DD7) makes the same check,
+    # so in that mode it is removed on its first frame, before it is drawn or hit.
+    if orig_p[0x1DD7:0x1DDB] != bytes.fromhex("2015D1B0"):
+        raise SystemExit("optimize: container state bytes differ")
+    p[0x1DD7:0x1DDA] = bytes([0x20, il["hoi"] & 0xFF, il["hoi"] >> 8])
     # D-40 flicker: the player first in every frame. $CFC1 "LDA $F4 / LSR / BCS odd / JSR $D890"
     # becomes "JSR $D890 / LDA $F4 / LSR / BCS odd" (same 8 bytes) and the odd path's closing
     # "JMP $D890" an RTS: odd frames drew the enemies first and the player last, so on crowded
