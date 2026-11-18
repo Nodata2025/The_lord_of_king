@@ -56,7 +56,18 @@ MENU_CELLS = 25                                   # window interior from column 
 
 # D-28 (bank 11 at $A200, mapped with the text engine's bank 10): staff roll S77 ($4D) pace
 STAFF_SRC = """
-staff:   JSR UDEMO             ; D-29: story cut-scenes unlock their DEMO entry
+staff:   LDA $03D8             ; QA 2026-11-18: next byte {INSTANT}? fast mode already now, so the
+         STA $18               ; frames before the engine reads it (string start: ~3) cannot open
+         LDA $03D9             ; the mouth either (the mouth routines close it on $10)
+         STA $19
+         LDY $03DA
+         LDA ($18),Y
+         CMP #$F7
+         BNE stf
+         LDA $03D7
+         ORA #$10
+         STA $03D7
+stf:     JSR UDEMO             ; D-29: story cut-scenes unlock their DEMO entry
          LDA $03D6
          CMP #$4D
          BNE st9
@@ -627,6 +638,11 @@ def main():
             if pi > 0:
                 out.append(CTRL["{PAGE}"])
             body = page
+            if body.startswith("{INSTANT}"):
+                # QA 2026-11-18: fast mode first, before the font set and the name tag, or those
+                # typed for ~11 frames with the mouth free to move (S64 page 0 in the ending)
+                out.append(CTRL["{INSTANT}"])
+                body = body[len("{INSTANT}"):]
             s = set_of.get((i, pi))
             if s is not None and s != cur and re.sub(r"\{[^}]+\}", "", body).strip():
                 out += bytes([0xFA, s]); cur = s
@@ -813,6 +829,13 @@ def main():
             raise SystemExit("picfix: bank-first site $%05X: unexpected bytes" % off)
         p[off + 7:off + 9] = bytes([pf & 0xFF, pf >> 8])
         nfix += 1
+    # QA 2026-11-18: cut-scene mouth routines close the mouth while $03D7 has $60 (waiting/done);
+    # also while $10 (fast mode), so an {INSTANT} page never opens it (fast typing by A lasts a
+    # few frames, so normal pages hardly change)
+    for off in (0x5E94, 0x5EBB, 0x62D9, 0x6319, 0x650E, 0x67B9, 0x7EA8, 0x7EE3, 0x7F1E):
+        if orig_p[off:off + 5] != b"\xad\xd7\x03\x29\x60":
+            raise SystemExit("mouth: unexpected bytes at $%05X" % off)
+        p[off + 4] = 0x70
     # D-34: the text-window IRQ (scanline ~163, inside row 20) switched the $0800/$0C00 banks
     # low nibble first: for a moment the bank was (new low | old high) = a picture bank whose
     # tile $FF is not blank, and the right end of that scanline showed a coloured streak.
