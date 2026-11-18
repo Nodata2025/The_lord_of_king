@@ -220,12 +220,14 @@ fh1:     STA $035E,X
          STA $034D
          JMP fh2
 fh0:     JMP fh3
-fh2:     LDX #$00              ; D-42: no blue bubbles (object type $1F); their spawn flag stays
+fh2:     LDX #$00              ; D-42: no bubble clusters (object types $1D-$1F); their spawn flag stays
 fb1:     LDA $0600,X           ;  set, so they never come back
          BPL fb2
-         LDA $060E,X
-         CMP #$1F
-         BNE fb2
+         LDA $060E,X           ; $1D-$1F: the bubble/grape clusters (purple $1D/$1E, blue $1F)
+         SEC
+         SBC #$1D
+         CMP #$03
+         BCS fb2
          LDA #$00
          STA $0600,X
 fb2:     TXA
